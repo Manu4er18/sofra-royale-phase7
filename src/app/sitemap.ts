@@ -10,7 +10,7 @@ import { siteConfig } from "@/config/site";
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = siteConfig.url;
+  const base = siteConfig.url.replace(/\/$/, "");
 
   const staticRoutes: MetadataRoute.Sitemap = [
     "",
@@ -42,30 +42,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "" ? 1 : 0.7,
   }));
 
-  const [products, categories] = await Promise.all([
-    db.product.findMany({
-      where: { status: "PUBLISHED" },
-      select: { slug: true, updatedAt: true },
-    }),
-    db.category.findMany({
-      where: { isActive: true },
-      select: { slug: true, updatedAt: true },
-    }),
-  ]);
+  try {
+    const [products, categories] = await Promise.all([
+      db.product.findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true, updatedAt: true },
+      }),
+      db.category.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
 
-  const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${base}/menu/${p.slug}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+    const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
+      url: `${base}/menu/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
 
-  const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: `${base}/${c.slug}`,
-    lastModified: c.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
+    const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
+      url: `${base}/${c.slug}`,
+      lastModified: c.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }));
 
-  return [...staticRoutes, ...productRoutes, ...categoryRoutes];
+    return [...staticRoutes, ...productRoutes, ...categoryRoutes];
+  } catch {
+    return staticRoutes;
+  }
 }

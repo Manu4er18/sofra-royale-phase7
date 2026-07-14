@@ -6,36 +6,84 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
+  applicationName: siteConfig.name,
+  category: "restaurant",
   title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
+    default: `${siteConfig.name} | Dubai & Turkish Fine Dining`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
   keywords: [
-    "Restaurant",
+    "Sofra Royale",
+    "Sofra Royale Restaurant",
+    "Dubai Restaurant",
+    "Turkish Restaurant",
+    "tuerkisches Restaurant",
     "Dubai Küche",
-    "Türkische Küche",
-    "Halal",
-    "Lieferung",
+    "türkische Küche",
+    "Halal Restaurant",
     "Fine Dining",
+    "Grill Spezialitäten",
+    "Mezze",
+    "Baklava",
+    "Restaurant Lieferung",
+    "Online bestellen",
+    "Reservierung",
   ],
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  alternates: {
+    canonical: "/",
+    languages: {
+      de: "/",
+      en: "/",
+      tr: "/",
+      ar: "/",
+    },
+  },
   openGraph: {
     type: "website",
     locale: "de_DE",
     url: siteConfig.url,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | Dubai & Turkish Fine Dining`,
     description: siteConfig.description,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: `${siteConfig.name} — ${siteConfig.tagline}`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | Dubai & Turkish Fine Dining`,
     description: siteConfig.description,
+    images: ["/opengraph-image"],
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#faf6ef" },
     { media: "(prefers-color-scheme: dark)", color: "#17110c" },

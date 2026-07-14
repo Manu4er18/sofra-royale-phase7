@@ -9,7 +9,7 @@ export const siteConfig = {
   name: "Sofra Royale",
   tagline: "Dubai & Turkish Fine Dining",
   description:
-    "Sofra Royale vereint die Aromen Dubais mit der Tradition der türkischen Küche — Premium-Gerichte, Lieferung, Abholung und Reservierung.",
+    "Sofra Royale vereint Dubai Fine Dining mit türkischer Küche: halal Premium-Gerichte, Grill-Spezialitäten, Mezze, Desserts, Lieferung, Abholung und Reservierung.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   defaultLocale: "de" as const,
   locales: ["de", "en", "tr", "ar"] as const,
