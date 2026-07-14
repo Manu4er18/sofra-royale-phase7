@@ -125,8 +125,11 @@ export function LoginForm() {
       });
 
       if (!response.ok) {
+        const payload = await response.json().catch(() => null);
         toast.error("E-Mail konnte nicht gesendet werden", {
-          description: "Bitte versuchen Sie es in einem Moment erneut.",
+          description:
+            payload?.error ??
+            "Bitte versuchen Sie es in einem Moment erneut.",
         });
         return;
       }

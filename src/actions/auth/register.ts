@@ -99,11 +99,23 @@ export async function registerUser(
       name: user.name ?? "Guten Tag",
       verifyUrl,
     });
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: email,
       subject: verificationEmail.subject,
       html: verificationEmail.html,
     });
+
+    if (!emailResult.ok) {
+      console.error("[registerUser] verification email failed", {
+        email,
+        error: emailResult.error,
+      });
+      return {
+        success: false,
+        error:
+          "Konto erstellt, aber die Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte prüfen Sie die SMTP-Einstellungen in Vercel.",
+      };
+    }
 
     return { success: true };
   } catch (error) {

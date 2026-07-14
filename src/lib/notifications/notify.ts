@@ -106,7 +106,27 @@ export async function notify(
   }
 }
 
+function normalizeBaseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().replace(/\/$/, "");
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function getBaseUrl(): string {
+  return (
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ??
+    normalizeBaseUrl(process.env.AUTH_URL) ??
+    normalizeBaseUrl(process.env.NEXTAUTH_URL) ??
+    normalizeBaseUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
+    normalizeBaseUrl(process.env.VERCEL_URL) ??
+    normalizeBaseUrl(siteConfig.url) ??
+    "http://localhost:3000"
+  );
+}
+
 /** Absolute URL builder for links inside emails. */
 export function absoluteUrl(path: string): string {
-  return `${siteConfig.url}${path.startsWith("/") ? path : `/${path}`}`;
+  const pathname = path.startsWith("/") ? path : `/${path}`;
+  return `${getBaseUrl()}${pathname}`;
 }

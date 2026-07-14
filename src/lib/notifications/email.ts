@@ -17,13 +17,25 @@ export function isEmailConfigured(): boolean {
   );
 }
 
+function getSmtpPort(): number {
+  const port = Number(process.env.EMAIL_SERVER_PORT ?? 465);
+  return Number.isFinite(port) ? port : 465;
+}
+
+function getSmtpSecure(port: number): boolean {
+  const explicit = process.env.EMAIL_SERVER_SECURE;
+  if (explicit) return explicit === "true";
+  return port === 465;
+}
+
 function getTransporter(): nodemailer.Transporter | null {
   if (!isEmailConfigured()) return null;
   if (!transporter) {
+    const port = getSmtpPort();
     transporter = nodemailer.createTransport({
       host: process.env.EMAIL_SERVER_HOST ?? "smtp.gmail.com",
-      port: Number(process.env.EMAIL_SERVER_PORT ?? 465),
-      secure: (process.env.EMAIL_SERVER_SECURE ?? "true") === "true",
+      port,
+      secure: getSmtpSecure(port),
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
       socketTimeout: 15_000,
@@ -44,13 +56,18 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: true } | { ok: false; error: string }> {
   const client = getTransporter();
   if (!client) {
-    console.info(
-      `[email] (skipped — SMTP env unset) → ${params.to}: ${params.subject}`,
-    );
-    return { ok: false };
+    const error =
+      "SMTP is not configured: EMAIL_SERVER_USER or EMAIL_SERVER_PASSWORD is missing.";
+    console.error(`[email] ${error}`, {
+      to: params.to,
+      subject: params.subject,
+      hasUser: Boolean(process.env.EMAIL_SERVER_USER),
+      hasPassword: Boolean(process.env.EMAIL_SERVER_PASSWORD),
+    });
+    return { ok: false, error };
   }
   try {
     await client.sendMail({
@@ -61,7 +78,28 @@ export async function sendEmail(params: {
     });
     return { ok: true };
   } catch (error) {
-    console.error("[email] send failed", error);
-    return { ok: false };
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[email] send failed", {
+      message,
+      name: error instanceof Error ? error.name : "UnknownError",
+      code:
+        typeof error === "object" && error && "code" in error
+          ? String(error.code)
+          : undefined,
+      command:
+        typeof error === "object" && error && "command" in error
+          ? String(error.command)
+          : undefined,
+      response:
+        typeof error === "object" && error && "response" in error
+          ? String(error.response)
+          : undefined,
+      to: params.to,
+      subject: params.subject,
+      host: process.env.EMAIL_SERVER_HOST ?? "smtp.gmail.com",
+      port: getSmtpPort(),
+      user: process.env.EMAIL_SERVER_USER,
+    });
+    return { ok: false, error: message };
   }
 }

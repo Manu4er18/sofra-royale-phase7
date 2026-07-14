@@ -55,11 +55,27 @@ export async function POST(request: Request) {
     resetUrl,
   });
 
-  await sendEmail({
+  const emailResult = await sendEmail({
     to: user.email,
     subject: email.subject,
     html: email.html,
   });
+
+  if (!emailResult.ok) {
+    console.error("[forgot-password] reset email failed", {
+      userId: user.id,
+      email: user.email,
+      error: emailResult.error,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Die Passwort-E-Mail konnte nicht gesendet werden. Bitte SMTP-Konfiguration prüfen.",
+      },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

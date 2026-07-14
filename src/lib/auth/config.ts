@@ -8,6 +8,7 @@ import type { NextAuthConfig } from "next-auth";
  * Providers that need the database are added in `src/lib/auth/index.ts`.
  */
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",
