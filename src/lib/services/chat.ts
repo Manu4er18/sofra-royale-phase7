@@ -1,0 +1,90 @@
+import "server-only";
+
+import { cookies } from "next/headers";
+import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
+
+/**
+ * Chat service — conversation lookup for customers (logged-in or guest
+ * via a cookie token) and staff.
+ */
+
+export const CHAT_COOKIE = "sr_chat";
+
+export type ChatMessageView = {
+  id: string;
+  senderType: "CUSTOMER" | "STAFF" | "SYSTEM";
+  type: "TEXT" | "IMAGE";
+  body: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  readAt: string | null;
+};
+
+const messageSelect = {
+  id: true,
+  senderType: true,
+  type: true,
+  body: true,
+  imageUrl: true,
+  createdAt: true,
+  readAt: true,
+} as const;
+
+/** The current customer's active conversation (or null). */
+export async function getMyConversation() {
+  const session = await auth();
+  if (session?.user?.id) {
+    return db.chatConversation.findFirst({
+      where: {
+        customerId: session.user.id,
+        status: { not: "ARCHIVED" },
+      },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        customer: { select: { isChatBlocked: true } },
+        messages: { orderBy: { createdAt: "asc" }, select: messageSelect },
+      },
+    });
+  }
+  const token = (await cookies()).get(CHAT_COOKIE)?.value;
+  if (!token) return null;
+  return db.chatConversation.findFirst({
+    where: { id: token, status: { not: "ARCHIVED" } },
+    include: {
+      customer: { select: { isChatBlocked: true } },
+      messages: { orderBy: { createdAt: "asc" }, select: messageSelect },
+    },
+  });
+}
+
+export function toMessageViews(
+  messages: Array<{
+    id: string;
+    senderType: "CUSTOMER" | "STAFF" | "SYSTEM";
+    type: "TEXT" | "IMAGE";
+    body: string | null;
+    imageUrl: string | null;
+    createdAt: Date;
+    readAt: Date | null;
+  }>,
+): ChatMessageView[] {
+  return messages.map((m) => ({
+    id: m.id,
+    senderType: m.senderType,
+    type: m.type,
+    body: m.body,
+    imageUrl: m.imageUrl,
+    createdAt: m.createdAt.toISOString(),
+    readAt: m.readAt?.toISOString() ?? null,
+  }));
+}
+
+/** Staff inbox counts + list helpers. */
+export async function getStaffChatSummary() {
+  const [open, assigned] = await Promise.all([
+    db.chatConversation.count({ where: { status: "OPEN" } }),
+    db.chatConversation.count({ where: { status: "ASSIGNED" } }),
+  ]);
+  return { open, assigned };
+}

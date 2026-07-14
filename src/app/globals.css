@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   SOFRA ROYALE — design tokens
+   Warm, premium palette: dark brown / coffee / beige / cream / gold.
+   HSL triplets consumed by tailwind.config.ts via hsl(var(--token)).
+   ========================================================================== */
+
+@layer base {
+  :root {
+    /* Light mode — cream & coffee */
+    --background: 36 45% 97%;
+    --foreground: 25 35% 12%;
+
+    --card: 38 40% 99%;
+    --card-foreground: 25 35% 12%;
+
+    --popover: 38 40% 99%;
+    --popover-foreground: 25 35% 12%;
+
+    /* Rich coffee brown */
+    --primary: 27 45% 26%;
+    --primary-foreground: 38 45% 96%;
+
+    --secondary: 35 30% 91%;
+    --secondary-foreground: 27 40% 20%;
+
+    --muted: 35 28% 92%;
+    --muted-foreground: 27 15% 42%;
+
+    --accent: 35 35% 88%;
+    --accent-foreground: 27 45% 20%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 150 55% 30%;
+    --success-foreground: 150 40% 96%;
+
+    --warning: 38 90% 45%;
+    --warning-foreground: 30 40% 12%;
+
+    --border: 32 25% 85%;
+    --input: 32 25% 82%;
+    --ring: 40 55% 48%;
+
+    /* Brand accents */
+    --gold: 40 58% 46%;
+    --gold-foreground: 30 40% 12%;
+    --gold-muted: 42 50% 88%;
+    --cream: 38 50% 94%;
+    --coffee: 27 40% 30%;
+    --coffee-deep: 26 35% 16%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Dark mode — espresso & gold */
+    --background: 26 30% 8%;
+    --foreground: 36 30% 90%;
+
+    --card: 26 28% 11%;
+    --card-foreground: 36 30% 90%;
+
+    --popover: 26 28% 10%;
+    --popover-foreground: 36 30% 90%;
+
+    /* Gold takes the lead in dark mode */
+    --primary: 40 55% 55%;
+    --primary-foreground: 26 35% 10%;
+
+    --secondary: 26 22% 17%;
+    --secondary-foreground: 36 28% 86%;
+
+    --muted: 26 20% 16%;
+    --muted-foreground: 34 15% 62%;
+
+    --accent: 26 24% 20%;
+    --accent-foreground: 38 35% 88%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 150 45% 42%;
+    --success-foreground: 150 40% 96%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 30 40% 10%;
+
+    --border: 26 20% 20%;
+    --input: 26 20% 24%;
+    --ring: 40 55% 55%;
+
+    --gold: 41 60% 58%;
+    --gold-foreground: 26 35% 10%;
+    --gold-muted: 32 25% 22%;
+    --cream: 34 20% 80%;
+    --coffee: 30 30% 55%;
+    --coffee-deep: 26 30% 6%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+  /* Elegant headings via the display serif */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* Gold underline flourish for section headings */
+  .heading-flourish {
+    @apply relative inline-block pb-3;
+  }
+  .heading-flourish::after {
+    content: "";
+    @apply absolute bottom-0 left-1/2 h-px w-16 -translate-x-1/2 bg-gold;
+  }
+  /* Subtle grain/vignette hero overlay */
+  .hero-overlay {
+    background: linear-gradient(
+      to bottom,
+      hsl(26 30% 6% / 0.55),
+      hsl(26 30% 6% / 0.35) 50%,
+      hsl(26 30% 8% / 0.75)
+    );
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}

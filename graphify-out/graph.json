@@ -1,0 +1,967 @@
+{
+  "generatedAt": "2026-07-14T01:06:01.484Z",
+  "root": "sofra-royale-phase7",
+  "fileCount": 240,
+  "nodes": [
+    {
+      "id": ".codex/hooks.json",
+      "type": "file"
+    },
+    {
+      "id": ".env",
+      "type": "file"
+    },
+    {
+      "id": ".env.example",
+      "type": "file"
+    },
+    {
+      "id": ".gitignore",
+      "type": "file"
+    },
+    {
+      "id": ".prettierignore",
+      "type": "file"
+    },
+    {
+      "id": ".prettierrc",
+      "type": "file"
+    },
+    {
+      "id": "AGENTS.md",
+      "type": "file"
+    },
+    {
+      "id": "README.md",
+      "type": "file"
+    },
+    {
+      "id": "docs/ARCHITECTURE.md",
+      "type": "file"
+    },
+    {
+      "id": "docs/DEPLOYMENT.md",
+      "type": "file"
+    },
+    {
+      "id": "eslint.config.mjs",
+      "type": "file"
+    },
+    {
+      "id": "next-env.d.ts",
+      "type": "file"
+    },
+    {
+      "id": "next.config.ts",
+      "type": "file"
+    },
+    {
+      "id": "package-lock.json",
+      "type": "file"
+    },
+    {
+      "id": "package.json",
+      "type": "file"
+    },
+    {
+      "id": "postcss.config.mjs",
+      "type": "file"
+    },
+    {
+      "id": "prisma/migrations/20260713225601_init/migration.sql",
+      "type": "file"
+    },
+    {
+      "id": "prisma/migrations/migration_lock.toml",
+      "type": "file"
+    },
+    {
+      "id": "prisma/schema.prisma",
+      "type": "file"
+    },
+    {
+      "id": "prisma/seed.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/account.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/admin/catalog-config.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/admin/moderation.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/admin/orders.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/admin/products.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/admin/roles.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/auth/register.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/auth/reset-password.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/cart.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/chat.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/checkout.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/coupon.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/favorites.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/loyalty.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/notifications.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/reservations.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/actions/reviews.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/app/(auth)/layout.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(auth)/login/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(auth)/register/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(auth)/reset-password/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/[collection]/loading.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/[collection]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/about/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/addresses/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/favorites/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/layout.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/loyalty/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/notifications/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/orders/[orderNumber]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/orders/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/reservations/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/reviews/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/account/settings/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/allergens/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/cart/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/checkout/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/checkout/payment/[orderNumber]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/checkout/result/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/contact/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/cookies/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/delivery/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/faq/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/imprint/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/layout.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/menu/[slug]/loading.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/menu/[slug]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/menu/loading.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/menu/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/privacy/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/refunds/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/reservations/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/search/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/terms/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/(site)/track-order/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/analytics/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/audit/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/chat/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/content/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/coupons/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/customers/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/layout.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/menu/[id]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/menu/new/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/menu/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/orders/[orderNumber]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/orders/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/reservations/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/reviews/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/roles/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/admin/zones/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/admin/chat/[conversationId]/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/admin/export/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/auth/[...nextauth]/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/auth/forgot-password/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/auth/reset-password/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/auth/verification-status/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/auth/verify-email/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/chat/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/pusher/auth/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/search/suggestions/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/api/webhooks/stripe/route.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/error.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/global-error.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/globals.css",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/layout.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/loading.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/manifest.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/not-found.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/opengraph-image.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/robots.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/sitemap.ts",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/app/verify-email/[token]/page.tsx",
+      "type": "page-or-route"
+    },
+    {
+      "id": "src/components/account/account-nav.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/address-manager.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/delete-review-button.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/loyalty-redeem.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/notification-center.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/review-dialog.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/account/settings-forms.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/admin-sidebar.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/content-forms.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/coupon-manager.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/customer-controls.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/order-controls.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/product-config-editor.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/product-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/product-images.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/product-row-actions.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/reservation-controls.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/revenue-bars.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/review-moderation.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/roles-manager.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/admin/zone-manager.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/auth/google-button.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/auth/login-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/auth/register-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/auth/reset-password-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/cart/cart-line-item.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/chat/admin-chat.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/chat/chat-widget.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/checkout/checkout-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/checkout/coupon-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/checkout/stripe-payment-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/home/home-sections.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/layout/notification-listener.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/layout/site-footer.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/layout/site-header.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/layout/theme-toggle.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/layout/user-nav.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/filter-panel.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/pagination.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/price.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/product-badges.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/product-card.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/product-grid.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/product-listing.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/rating-stars.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/menu/sort-select.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/order/order-live-status.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/order/order-status-timeline.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/order/order-summary-card.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/product/favorite-button.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/product/product-configurator.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/product/product-gallery.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/product/review-list.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/providers.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/reservations/cancel-reservation-button.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/reservations/reservation-form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/search/search-box.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/shared/fade-in.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/shared/json-ld.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/shared/prose-page.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/shared/rating-input.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/avatar.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/badge.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/button.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/card.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/checkbox.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/dialog.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/dropdown-menu.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/form.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/input.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/label.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/separator.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/sheet.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/components/ui/skeleton.tsx",
+      "type": "component"
+    },
+    {
+      "id": "src/config/nav.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/config/site.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/emails/templates.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/hooks/use-filter-params.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/audit.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/auth/config.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/auth/index.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/auth/permissions.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/auth/rate-limit.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/auth/rbac.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/db.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/notifications/email.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/notifications/notify.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/notifications/sms.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/order-transitions.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/pricing.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/realtime/client.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/realtime/server.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/seo.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/analytics.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/cart.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/catalog.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/chat.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/checkout.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/coupon.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/delivery.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/order.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/reservation.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/services/settings.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/stripe.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/utils.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/account.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/admin.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/auth.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/cart.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/catalog.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/chat.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/checkout.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/reservation.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/lib/validations/review.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/middleware.ts",
+      "type": "file"
+    },
+    {
+      "id": "src/types/next-auth.d.ts",
+      "type": "file"
+    },
+    {
+      "id": "tailwind.config.ts",
+      "type": "file"
+    },
+    {
+      "id": "tests/order-transitions.test.ts",
+      "type": "file"
+    },
+    {
+      "id": "tests/pricing.test.ts",
+      "type": "file"
+    },
+    {
+      "id": "tests/utils.test.ts",
+      "type": "file"
+    },
+    {
+      "id": "tsconfig.json",
+      "type": "file"
+    },
+    {
+      "id": "tsconfig.tsbuildinfo",
+      "type": "file"
+    },
+    {
+      "id": "vercel.json",
+      "type": "file"
+    },
+    {
+      "id": "vitest.config.ts",
+      "type": "file"
+    }
+  ]
+}

@@ -1,0 +1,1359 @@
+// =============================================================================
+// SOFRA ROYALE — Prisma schema
+// PostgreSQL relational schema for the full restaurant platform.
+//
+// Conventions
+//  - All monetary amounts are stored as Int in the smallest currency unit
+//    (euro cents) to avoid floating point errors. Currency defaults to EUR.
+//  - Every table has createdAt/updatedAt where mutation is possible.
+//  - Deletion strategy: user-generated children cascade; catalog references
+//    from orders are snapshotted (order rows never lose data when a product
+//    is deleted — product FK is SetNull and a denormalized snapshot remains).
+//  - Translatable content lives in *Translation tables keyed by locale
+//    ("en", "de", "tr", "ar"). The base row holds the default locale (de).
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+/// Coarse-grained role used for fast route guards. Fine-grained permissions
+/// are modeled via Role/Permission below and enforced in the service layer.
+enum UserRole {
+  CUSTOMER
+  STAFF
+  MANAGER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Locale {
+  en
+  de
+  tr
+  ar
+}
+
+enum SpiceLevel {
+  NONE
+  MILD
+  MEDIUM
+  HOT
+  EXTRA_HOT
+}
+
+enum ProductStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_PENDING
+  PAID
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DeliveryMethod {
+  DELIVERY
+  PICKUP
+  DINE_IN
+}
+
+enum PaymentProvider {
+  STRIPE
+  CASH_ON_DELIVERY
+  PAY_AT_PICKUP
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_DELIVERY
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum SeatingArea {
+  INDOOR
+  OUTDOOR
+}
+
+enum ChatStatus {
+  OPEN
+  ASSIGNED
+  RESOLVED
+  ARCHIVED
+}
+
+enum ChatSenderType {
+  CUSTOMER
+  STAFF
+  SYSTEM
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+}
+
+enum NotificationType {
+  ACCOUNT
+  ORDER
+  PAYMENT
+  RESERVATION
+  PROMOTION
+  CHAT
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum LoyaltyTransactionType {
+  EARN
+  REDEEM
+  EXPIRE
+  ADJUSTMENT
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum InventoryUnit {
+  PIECE
+  GRAM
+  KILOGRAM
+  MILLILITER
+  LITER
+}
+
+// =============================================================================
+// AUTH, USERS & RBAC
+// =============================================================================
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  phone          String?   @unique
+  phoneVerified  DateTime?
+  image          String?
+  /// bcrypt hash — null for OAuth-only accounts. NEVER store plain text.
+  hashedPassword String?
+  role           UserRole  @default(CUSTOMER)
+  isActive       Boolean   @default(true)
+  /// Blocked from live chat for abuse.
+  isChatBlocked  Boolean   @default(false)
+  preferredLocale Locale   @default(de)
+  /// Persisted theme preference: "light" | "dark" | "system".
+  themePreference String   @default("system")
+  marketingOptIn Boolean   @default(false)
+  lastLoginAt    DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  profile             UserProfile?
+  accounts            Account[]
+  sessions            Session[]
+  addresses           Address[]
+  userRoles           UserRole2[]
+  carts               Cart[]
+  favorites           Favorite[]
+  orders              Order[]
+  reviews             Review[]
+  reservations        Reservation[]
+  notifications       Notification[]
+  loyaltyAccount      LoyaltyAccount?
+  couponUsages        CouponUsage[]
+  customerChats       ChatConversation[] @relation("CustomerChats")
+  assignedChats       ChatConversation[] @relation("AssignedChats")
+  chatMessages        ChatMessage[]
+  passwordResetTokens PasswordResetToken[]
+  loginHistory        LoginHistory[]
+  auditLogs           AuditLog[]
+  activityLogs        ActivityLog[]
+  blogPosts           BlogPost[]
+  reviewReplies       ReviewReply[]
+  personalCoupons     Coupon[]           @relation("CustomerCoupons")
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model UserProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  firstName     String?
+  lastName      String?
+  dateOfBirth   DateTime?
+  bio           String?
+  avatarUrl     String?
+  /// Per-channel notification preferences, validated by Zod at the edge.
+  /// Shape: { orderUpdates: {email,sms,push}, promotions: {...}, ... }
+  notificationPreferences Json @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id           String      @id @default(cuid())
+  userId       String
+  type         AddressType @default(HOME)
+  label        String?
+  recipientName String
+  phone        String
+  street       String
+  houseNumber  String
+  addressLine2 String?
+  postalCode   String
+  city         String
+  country      String      @default("DE")
+  /// Optional geo coords for delivery routing.
+  latitude     Float?
+  longitude    Float?
+  deliveryNotes String?
+  isDefault    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@index([postalCode])
+}
+
+/// Fine-grained RBAC: a Role groups Permissions; users may hold multiple
+/// Roles in addition to their coarse User.role enum.
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole2[]
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  /// e.g. "orders:read", "orders:refund", "menu:write", "settings:write"
+  key         String  @unique
+  description String?
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+/// Join table between User and Role ("UserRole" name is taken by the enum).
+model UserRole2 {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("UserRoleAssignment")
+}
+
+// --- Auth.js adapter models ---
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  /// SHA-256 hash of the raw token (raw token only ever lives in the email).
+  tokenHash String   @unique
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email, createdAt])
+}
+
+// =============================================================================
+// CATALOG
+// =============================================================================
+
+model Cuisine {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  description String?
+  imageUrl  String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products     Product[]
+  translations CuisineTranslation[]
+}
+
+model CuisineTranslation {
+  id          String @id @default(cuid())
+  cuisineId   String
+  locale      Locale
+  name        String
+  description String?
+
+  cuisine Cuisine @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
+
+  @@unique([cuisineId, locale])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  /// Optional meal-time tagging: "breakfast" | "lunch" | "dinner" | null
+  mealTime    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products     Product[]
+  translations CategoryTranslation[]
+  coupons      Coupon[]              @relation("CouponCategories")
+}
+
+model CategoryTranslation {
+  id          String @id @default(cuid())
+  categoryId  String
+  locale      Locale
+  name        String
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  name             String
+  shortDescription String
+  description      String        @db.Text
+  categoryId       String
+  cuisineId        String
+  /// Euro cents.
+  basePrice        Int
+  /// Euro cents — when set and lower than basePrice, item is "on sale".
+  discountPrice    Int?
+  currency         String        @default("EUR")
+  calories         Int?
+  /// Minutes.
+  preparationTime  Int           @default(20)
+  portionSize      String?
+  spiceLevel       SpiceLevel    @default(NONE)
+  status           ProductStatus @default(DRAFT)
+  publishAt        DateTime?
+  stockStatus      StockStatus   @default(IN_STOCK)
+  /// Null = unlimited (made to order); otherwise decremented per order.
+  stockQuantity    Int?
+  lowStockThreshold Int          @default(5)
+  isAvailable      Boolean       @default(true)
+  isFeatured       Boolean       @default(false)
+  isPopular        Boolean       @default(false)
+  isNew            Boolean       @default(false)
+  isVegetarian     Boolean       @default(false)
+  isVegan          Boolean       @default(false)
+  isGlutenFree     Boolean       @default(false)
+  isHalal          Boolean       @default(true)
+  isChefRecommendation Boolean   @default(false)
+  isDailySpecial   Boolean       @default(false)
+  /// Denormalized aggregates, recomputed transactionally on review changes.
+  averageRating    Float         @default(0)
+  reviewCount      Int           @default(0)
+  orderCount       Int           @default(0)
+  metaTitle        String?
+  metaDescription  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  category     Category             @relation(fields: [categoryId], references: [id])
+  cuisine      Cuisine              @relation(fields: [cuisineId], references: [id])
+  images       ProductImage[]
+  videos       ProductVideo[]
+  translations ProductTranslation[]
+  ingredients  ProductIngredient[]
+  allergens    ProductAllergen[]
+  variations   ProductVariation[]
+  optionGroups ProductOptionGroup[]
+  addons       ProductAddon[]
+  cartItems    CartItem[]
+  favorites    Favorite[]
+  orderItems   OrderItem[]
+  reviews      Review[]
+  relatedTo    ProductRelation[]    @relation("RelatedFrom")
+  relatedFrom  ProductRelation[]    @relation("RelatedTo")
+  coupons      Coupon[]             @relation("CouponProducts")
+  inventoryLogs InventoryLog[]
+
+  @@index([categoryId])
+  @@index([cuisineId])
+  @@index([status, isAvailable])
+  @@index([isFeatured])
+  @@index([isPopular])
+  @@index([averageRating])
+  @@index([basePrice])
+  @@index([createdAt])
+}
+
+/// Self-referencing many-to-many for "related dishes" / "goes well with".
+model ProductRelation {
+  productId String
+  relatedId String
+  sortOrder Int    @default(0)
+
+  product Product @relation("RelatedFrom", fields: [productId], references: [id], onDelete: Cascade)
+  related Product @relation("RelatedTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@id([productId, relatedId])
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  productId  String
+  url        String
+  altText    String
+  isFeatured Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductVideo {
+  id           String   @id @default(cuid())
+  productId    String
+  url          String
+  thumbnailUrl String?
+  title        String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductTranslation {
+  id               String @id @default(cuid())
+  productId        String
+  locale           Locale
+  name             String
+  shortDescription String
+  description      String @db.Text
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locale])
+}
+
+model Ingredient {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  /// Optional link to inventory tracking.
+  stockQuantity Float?
+  unit      InventoryUnit @default(GRAM)
+  lowStockThreshold Float?
+  supplierName String?
+  supplierContact String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products      ProductIngredient[]
+  inventoryLogs InventoryLog[]
+}
+
+model ProductIngredient {
+  productId    String
+  ingredientId String
+  /// Whether a customer may remove it ("no onions").
+  isRemovable  Boolean @default(false)
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([productId, ingredientId])
+}
+
+model Allergen {
+  id   String @id @default(cuid())
+  /// EU allergen code, e.g. "A" gluten, "C" eggs, "G" milk …
+  code String @unique
+  name String
+  icon String?
+
+  products ProductAllergen[]
+}
+
+model ProductAllergen {
+  productId  String
+  allergenId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  allergen Allergen @relation(fields: [allergenId], references: [id], onDelete: Cascade)
+
+  @@id([productId, allergenId])
+}
+
+/// A variation is a mutually exclusive size/portion choice with its own price.
+model ProductVariation {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  /// Absolute price in cents (replaces basePrice when selected).
+  price     Int
+  isDefault Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+
+  @@index([productId])
+}
+
+/// Option groups: "Spice level", "Sauce", "Remove ingredients", …
+model ProductOptionGroup {
+  id         String  @id @default(cuid())
+  productId  String
+  name       String
+  /// Minimum/maximum selectable options (0/1 => optional single choice).
+  minSelect  Int     @default(0)
+  maxSelect  Int     @default(1)
+  isRequired Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options ProductOption[]
+
+  @@index([productId])
+}
+
+model ProductOption {
+  id            String @id @default(cuid())
+  optionGroupId String
+  name          String
+  /// Price delta in cents (can be 0 or negative for removals).
+  priceDelta    Int    @default(0)
+  isDefault     Boolean @default(false)
+  sortOrder     Int    @default(0)
+
+  optionGroup ProductOptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+
+  @@index([optionGroupId])
+}
+
+/// Paid extras: extra meat, extra cheese, side dishes, drinks …
+model ProductAddon {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  /// Price in cents added per unit.
+  price     Int
+  maxQuantity Int   @default(3)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// =============================================================================
+// CART & FAVORITES
+// =============================================================================
+
+model Cart {
+  id        String   @id @default(cuid())
+  /// Null for guest carts, which are keyed by anonymous cartToken cookie.
+  userId    String?
+  cartToken String?  @unique
+  couponId  String?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items  CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id          String  @id @default(cuid())
+  cartId      String
+  productId   String
+  variationId String?
+  quantity    Int     @default(1)
+  /// Validated snapshot of selected option/addon IDs + quantities:
+  /// { options: [{groupId, optionIds[]}], addons: [{addonId, qty}] }
+  /// Server re-validates against the catalog and recomputes prices on
+  /// every read — the client never dictates a price.
+  selections  Json    @default("{}")
+  specialInstructions String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cart      Cart              @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variation ProductVariation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+model Favorite {
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+}
+
+// =============================================================================
+// ORDERS & PAYMENTS
+// =============================================================================
+
+model Order {
+  id             String         @id @default(cuid())
+  /// Human-friendly unique number, e.g. "SR-2026-000123".
+  orderNumber    String         @unique
+  userId         String?
+  /// Guest checkout contact snapshot.
+  guestEmail     String?
+  guestPhone     String?
+  guestName      String?
+  status         OrderStatus    @default(PENDING)
+  deliveryMethod DeliveryMethod
+  addressId      String?
+  /// Immutable snapshot of the delivery address at order time.
+  addressSnapshot Json?
+  deliveryZoneId String?
+  scheduledFor   DateTime?
+  customerNotes  String?
+  staffNotes     String?
+  /// All amounts in euro cents — computed server-side inside a transaction.
+  subtotal       Int
+  discountTotal  Int            @default(0)
+  deliveryFee    Int            @default(0)
+  serviceFee     Int            @default(0)
+  taxTotal       Int            @default(0)
+  /// German VAT is included in prices; taxTotal records the contained tax.
+  tipAmount      Int            @default(0)
+  total          Int
+  currency       String         @default("EUR")
+  couponId       String?
+  couponCode     String?
+  loyaltyPointsEarned   Int     @default(0)
+  loyaltyPointsRedeemed Int     @default(0)
+  estimatedReadyAt DateTime?
+  deliveredAt    DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancellationReason String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user          User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  address       Address?            @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  deliveryZone  DeliveryZone?       @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  coupon        Coupon?             @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  payments      Payment[]
+  refunds       Refund[]
+  reviews       Review[]
+  couponUsages  CouponUsage[]
+  loyaltyTransactions LoyaltyTransaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deliveryMethod])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String?
+  /// Denormalized snapshot — survives product deletion/edits.
+  productName String
+  productSlug String
+  imageUrl    String?
+  variationName String?
+  /// Human-readable selected options/addons snapshot:
+  /// [{group:"Spice level", value:"Hot", priceDelta:0}, …]
+  selections  Json    @default("[]")
+  specialInstructions String?
+  /// Cents. unitPrice already includes variation/options/addons deltas.
+  unitPrice   Int
+  quantity    Int
+  lineTotal   Int
+  /// VAT rate applied to this line (e.g. 7.0 or 19.0).
+  taxRate     Float   @default(7.0)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  fromStatus OrderStatus?
+  toStatus  OrderStatus
+  note      String?
+  /// User ID of staff member (or null for system/customer transitions).
+  changedBy String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id       String          @id @default(cuid())
+  orderId  String
+  provider PaymentProvider
+  status   PaymentStatus   @default(PENDING)
+  /// Cents.
+  amount   Int
+  currency String          @default("EUR")
+  /// Stripe references — never store card numbers/PANs anywhere.
+  stripePaymentIntentId String? @unique
+  stripeChargeId        String?
+  paymentMethodBrand    String?
+  paymentMethodLast4    String?
+  failureReason         String?
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Refund {
+  id        String       @id @default(cuid())
+  orderId   String
+  paymentId String
+  /// Cents. May be partial.
+  amount    Int
+  reason    String?
+  status    RefundStatus @default(PENDING)
+  stripeRefundId String? @unique
+  processedBy String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+// =============================================================================
+// COUPONS & LOYALTY
+// =============================================================================
+
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  description String?
+  type        CouponType
+  /// PERCENTAGE: basis points of 100 (e.g. 10 = 10%). FIXED_AMOUNT: cents.
+  value       Int
+  /// Cents. 0 = no minimum.
+  minOrderAmount Int     @default(0)
+  /// Cents. Caps percentage discounts; null = uncapped.
+  maxDiscountAmount Int?
+  usageLimit  Int?
+  usageLimitPerUser Int? @default(1)
+  usedCount   Int        @default(0)
+  isFirstOrderOnly Boolean @default(false)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean    @default(true)
+  /// Optional restriction to a specific customer.
+  customerId  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  customer   User?         @relation("CustomerCoupons", fields: [customerId], references: [id], onDelete: Cascade)
+  /// Optional scoping to products/categories (empty = order-wide).
+  products   Product[]     @relation("CouponProducts")
+  categories Category[]    @relation("CouponCategories")
+  usages     CouponUsage[]
+  orders     Order[]
+  carts      Cart[]
+
+  @@index([isActive, expiresAt])
+}
+
+model CouponUsage {
+  id       String   @id @default(cuid())
+  couponId String
+  userId   String?
+  orderId  String
+  /// Cents actually discounted on this order.
+  discountApplied Int
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, orderId])
+  @@index([userId])
+}
+
+model LoyaltyAccount {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  lifetimeEarned Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+}
+
+model LoyaltyTransaction {
+  id        String                 @id @default(cuid())
+  accountId String
+  orderId   String?
+  type      LoyaltyTransactionType
+  /// Positive for EARN, negative for REDEEM/EXPIRE.
+  points    Int
+  note      String?
+  expiresAt DateTime?
+  createdAt DateTime               @default(now())
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+}
+
+// =============================================================================
+// REVIEWS
+// =============================================================================
+
+model Review {
+  id        String       @id @default(cuid())
+  productId String
+  userId    String
+  /// Set when the reviewer has a COMPLETED order containing the product.
+  orderId   String?
+  rating    Int
+  title     String?
+  body      String?      @db.Text
+  status    ReviewStatus @default(PENDING)
+  isVerifiedPurchase Boolean @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order   Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  images  ReviewImage[]
+  replies ReviewReply[]
+
+  @@unique([productId, userId, orderId])
+  @@index([productId, status])
+  @@index([userId])
+}
+
+model ReviewImage {
+  id       String @id @default(cuid())
+  reviewId String
+  url      String
+  altText  String?
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+}
+
+model ReviewReply {
+  id        String   @id @default(cuid())
+  reviewId  String
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+}
+
+// =============================================================================
+// RESERVATIONS
+// =============================================================================
+
+model RestaurantTable {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  capacity Int
+  area     SeatingArea @default(INDOOR)
+  isActive Boolean     @default(true)
+
+  reservations Reservation[]
+}
+
+model Reservation {
+  id        String            @id @default(cuid())
+  userId    String?
+  tableId   String?
+  /// Contact snapshot (also for guests without accounts).
+  name      String
+  email     String
+  phone     String
+  date      DateTime
+  timeSlot  String
+  guests    Int
+  area      SeatingArea       @default(INDOOR)
+  specialRequests String?
+  status    ReservationStatus @default(PENDING)
+  staffNotes String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  table RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+
+  @@index([date, status])
+  @@index([userId])
+}
+
+/// Admin-managed blackout dates / capacity overrides for reservations.
+model ReservationBlackout {
+  id     String   @id @default(cuid())
+  date   DateTime @unique
+  reason String?
+}
+
+// =============================================================================
+// LIVE CHAT
+// =============================================================================
+
+model ChatConversation {
+  id           String     @id @default(cuid())
+  customerId   String?
+  /// For anonymous visitors before login.
+  guestEmail   String?
+  guestName    String?
+  assignedToId String?
+  status       ChatStatus @default(OPEN)
+  subject      String?
+  internalNotes String?
+  firstResponseAt DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  customer   User?         @relation("CustomerChats", fields: [customerId], references: [id], onDelete: SetNull)
+  assignedTo User?         @relation("AssignedChats", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages   ChatMessage[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([assignedToId])
+}
+
+model ChatMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  senderId       String?
+  senderType     ChatSenderType
+  type           ChatMessageType @default(TEXT)
+  body           String?         @db.Text
+  imageUrl       String?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  createdAt      DateTime        @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+}
+
+// =============================================================================
+// NOTIFICATIONS
+// =============================================================================
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  /// Deep link, e.g. "/account/orders/SR-2026-000123".
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// DELIVERY & TAX
+// =============================================================================
+
+model DeliveryZone {
+  id          String   @id @default(cuid())
+  name        String
+  /// Postal codes served by this zone.
+  postalCodes String[]
+  /// Cents.
+  deliveryFee Int
+  /// Cents.
+  minOrderAmount Int   @default(0)
+  /// Cents. Null = no free-delivery threshold.
+  freeDeliveryThreshold Int?
+  estimatedMinutes Int @default(45)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive])
+}
+
+model Tax {
+  id        String  @id @default(cuid())
+  name      String
+  /// Percent, e.g. 7.0 (food) or 19.0 (drinks/dine-in in DE).
+  rate      Float
+  /// Applies to: "FOOD_DELIVERY" | "DRINKS" | "DINE_IN" | "SERVICE"
+  appliesTo String
+  isActive  Boolean @default(true)
+
+  @@unique([name, appliesTo])
+}
+
+// =============================================================================
+// INVENTORY
+// =============================================================================
+
+model InventoryLog {
+  id           String   @id @default(cuid())
+  productId    String?
+  ingredientId String?
+  /// Positive = restock, negative = usage/waste/adjustment.
+  change       Float
+  /// "RESTOCK" | "ORDER" | "WASTE" | "ADJUSTMENT"
+  reason       String
+  note         String?
+  createdBy    String?
+  createdAt    DateTime @default(now())
+
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  ingredient Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([ingredientId])
+}
+
+// =============================================================================
+// CONTENT (CMS, BLOG, GALLERY, NEWSLETTER, SETTINGS)
+// =============================================================================
+
+model BlogCategory {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  posts BlogPost[]
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String
+  content     String    @db.Text
+  coverImageUrl String?
+  categoryId  String?
+  authorId    String?
+  locale      Locale    @default(de)
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  metaTitle   String?
+  metaDescription String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  author   User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, publishedAt])
+}
+
+model GalleryItem {
+  id        String    @id @default(cuid())
+  type      MediaType @default(IMAGE)
+  url       String
+  thumbnailUrl String?
+  title     String?
+  altText   String?
+  sortOrder Int       @default(0)
+  isVisible Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  isConfirmed    Boolean   @default(false)
+  confirmedAt    DateTime?
+  unsubscribedAt DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+/// Key-value store for restaurant settings editable in the admin CMS:
+/// opening hours, contact info, social links, hero content, fees, loyalty
+/// rules, SEO defaults … Values are typed JSON validated by Zod per key.
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+/// CMS-managed static pages (About, legal pages, FAQ intro …).
+model PageContent {
+  id        String   @id @default(cuid())
+  slug      String
+  locale    Locale   @default(de)
+  title     String
+  /// Ordered content blocks: [{type:"heading"|"richtext"|"image"|…, data}]
+  sections  Json     @default("[]")
+  metaTitle String?
+  metaDescription String?
+  isPublished Boolean @default(true)
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([slug, locale])
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  locale    Locale  @default(de)
+  question  String
+  answer    String  @db.Text
+  category  String?
+  sortOrder Int     @default(0)
+  isVisible Boolean @default(true)
+}
+
+// =============================================================================
+// AUDIT & ACTIVITY
+// =============================================================================
+
+/// Immutable trail of privileged/admin mutations.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  /// e.g. "Product", "Order", "SiteSetting"
+  entity    String
+  entityId  String?
+  /// Before/after diff or payload summary.
+  changes   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// Lighter-weight user activity feed (logins, orders placed, reviews …).
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+}
