@@ -26,11 +26,11 @@ export async function POST(request: Request) {
 
   const user = await db.user.findUnique({
     where: { email: parsed.data.email },
-    select: { id: true, name: true, email: true, isActive: true },
+    select: { id: true, name: true, email: true },
   });
 
   // Avoid account enumeration: successful response even if no account exists.
-  if (!user || !user.isActive) {
+  if (!user) {
     return NextResponse.json({ ok: true });
   }
 

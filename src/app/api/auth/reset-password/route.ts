@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   await db.$transaction([
     db.user.update({
       where: { id: record.userId },
-      data: { hashedPassword, emailVerified: new Date() },
+      data: { hashedPassword, emailVerified: new Date(), isActive: true },
     }),
     db.passwordResetToken.update({
       where: { id: record.id },
