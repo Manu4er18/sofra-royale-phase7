@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
 import { ProsePage, LegalTemplateNotice } from "@/components/shared/prose-page";
@@ -42,14 +43,14 @@ export default function TermsPage() {
         Lieferungen erfolgen nur innerhalb unserer ausgewiesenen
         Liefergebiete. Es gelten die jeweils angezeigten Mindestbestellwerte
         und Liefergebühren. Näheres in unseren{" "}
-        <a href="/delivery">Lieferbedingungen</a>.
+        <Link href="/delivery">Lieferbedingungen</Link>.
       </p>
 
       <h2>5. Widerruf</h2>
       <p>
         Für schnell verderbliche Waren und frisch zubereitete Speisen ist das
         Widerrufsrecht gesetzlich ausgeschlossen. Einzelheiten und Ausnahmen
-        finden Sie in unserer <a href="/refunds">Widerrufsbelehrung</a>.
+        finden Sie in unserer <Link href="/refunds">Widerrufsbelehrung</Link>.
       </p>
 
       <h2>6. Reservierungen</h2>
@@ -62,7 +63,7 @@ export default function TermsPage() {
       <h2>7. Haftung</h2>
       <p>
         Wir haften nach den gesetzlichen Bestimmungen. Bitte beachten Sie
-        unsere <a href="/allergens">Allergen-Informationen</a>; Spuren
+        unsere <Link href="/allergens">Allergen-Informationen</Link>; Spuren
         weiterer Allergene können nicht ausgeschlossen werden.
       </p>
     </ProsePage>

@@ -1,21 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
 
 import { siteConfig } from "@/config/site";
 import { Providers } from "@/components/providers";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -62,7 +49,12 @@ export default function RootLayout({
     // suppressHydrationWarning: next-themes mutates <html> class pre-paint.
     <html lang="de" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${playfair.variable} min-h-screen font-sans`}
+        className="min-h-screen font-sans"
+        style={{
+          ["--font-sans" as string]:
+            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          ["--font-display" as string]: 'Georgia, "Times New Roman", serif',
+        }}
       >
         {/* Keyboard skip link — first focusable element (accessibility). */}
         <a

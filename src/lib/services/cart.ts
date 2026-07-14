@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import {
@@ -131,7 +131,7 @@ export type PricedCartLine = {
   isAvailable: boolean;
 };
 
-const pricingInclude = {
+const pricingInclude = Prisma.validator<Prisma.ProductInclude>()({
   images: {
     orderBy: [{ isFeatured: "desc" as const }, { sortOrder: "asc" as const }],
     take: 1,
@@ -139,7 +139,7 @@ const pricingInclude = {
   variations: true,
   optionGroups: { include: { options: true } },
   addons: true,
-} as const;
+});
 
 type PricingProduct = Prisma.ProductGetPayload<{
   include: typeof pricingInclude;

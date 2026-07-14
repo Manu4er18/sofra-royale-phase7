@@ -110,7 +110,8 @@ export const checkoutSchema = z
     }
   });
 
-export type CheckoutInput = z.infer<typeof checkoutSchema>;
+export type CheckoutFormValues = z.input<typeof checkoutSchema>;
+export type CheckoutInput = z.output<typeof checkoutSchema>;
 
 export const trackOrderSchema = z.object({
   orderNumber: z

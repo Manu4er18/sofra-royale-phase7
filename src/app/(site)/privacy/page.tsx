@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
 import { getContactSettings } from "@/lib/services/settings";
@@ -78,7 +79,7 @@ export default async function PrivacyPage() {
       <p>
         Wir verwenden technisch notwendige Cookies (z.&nbsp;B. Anmeldung,
         Warenkorb). Details finden Sie in unserer{" "}
-        <a href="/cookies">Cookie-Richtlinie</a>.
+        <Link href="/cookies">Cookie-Richtlinie</Link>.
       </p>
     </ProsePage>
   );

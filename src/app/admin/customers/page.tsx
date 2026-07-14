@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { Prisma, UserRole } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
@@ -77,6 +78,7 @@ export default async function AdminCustomersPage(props: {
         <h1 className="text-3xl font-semibold">
           {view === "staff" ? "Team" : "Kunden"}
         </h1>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a
           href="/api/admin/export?type=customers"
           className="text-sm text-primary underline underline-offset-4 dark:text-gold"
@@ -91,14 +93,14 @@ export default async function AdminCustomersPage(props: {
           size="sm"
           asChild
         >
-          <a href="/admin/customers?view=customers">Kunden</a>
+          <Link href="/admin/customers?view=customers">Kunden</Link>
         </Button>
         <Button
           variant={view === "staff" ? "gold" : "outline"}
           size="sm"
           asChild
         >
-          <a href="/admin/customers?view=staff">Team</a>
+          <Link href="/admin/customers?view=staff">Team</Link>
         </Button>
         <form method="get" className="ml-auto flex gap-2">
           <input type="hidden" name="view" value={view} />

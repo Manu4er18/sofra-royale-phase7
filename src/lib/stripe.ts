@@ -18,7 +18,7 @@ export function getStripe(): Stripe {
   }
   if (!stripeClient) {
     stripeClient = new Stripe(key, {
-      apiVersion: "2025-05-28.basil",
+      apiVersion: "2025-08-27.basil",
       appInfo: { name: "Sofra Royale", version: "0.1.0" },
     });
   }

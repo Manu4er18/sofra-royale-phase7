@@ -58,6 +58,7 @@ export default async function AdminMenuPage(props: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-semibold">Speisekarte</h1>
         <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/api/admin/export?type=products"
             className="text-sm text-primary underline underline-offset-4 dark:text-gold"

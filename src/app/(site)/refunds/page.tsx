@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
 import { ProsePage, LegalTemplateNotice } from "@/components/shared/prose-page";
@@ -47,7 +48,7 @@ export default function RefundsPage() {
 
       <p>
         Fragen zu einer konkreten Bestellung? Melden Sie sich über den{" "}
-        <a href="/contact">Kontakt</a> — halten Sie Ihre Bestellnummer
+        <Link href="/contact">Kontakt</Link> — halten Sie Ihre Bestellnummer
         (Format SR-JJJJ-NNNNNN) bereit. {siteConfig.name} hilft gern.
       </p>
     </ProsePage>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Path } from "react-hook-form";
@@ -23,7 +24,11 @@ import {
   placeOrder,
   type QuoteResult,
 } from "@/actions/checkout";
-import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
+import {
+  checkoutSchema,
+  type CheckoutFormValues,
+  type CheckoutInput,
+} from "@/lib/validations/checkout";
 import { cn, formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,7 +112,7 @@ export function CheckoutForm({
   const defaultAddress =
     savedAddresses.find((a) => a.isDefault) ?? savedAddresses[0];
 
-  const form = useForm<CheckoutInput>({
+  const form = useForm<CheckoutFormValues, unknown, CheckoutInput>({
     resolver: zodResolver(checkoutSchema),
     mode: "onTouched",
     defaultValues: {
@@ -167,7 +172,7 @@ export function CheckoutForm({
 
   // ---- step gating -------------------------------------------------------
   async function nextStep() {
-    let fields: Path<CheckoutInput>[] = [];
+    let fields: Path<CheckoutFormValues>[] = [];
     if (step === 0) {
       fields = ["contact.name", "contact.email", "contact.phone"];
     } else if (step === 1 && deliveryMethod === "DELIVERY" && usingNewAddress) {
@@ -283,12 +288,12 @@ export function CheckoutForm({
                 {!isLoggedIn ? (
                   <p className="text-sm text-muted-foreground">
                     Sie bestellen als Gast.{" "}
-                    <a
+                    <Link
                       href="/login?callbackUrl=/checkout"
                       className="text-primary underline underline-offset-4 dark:text-gold"
                     >
                       Anmelden
-                    </a>{" "}
+                    </Link>{" "}
                     für gespeicherte Adressen und Treuepunkte.
                   </p>
                 ) : null}
