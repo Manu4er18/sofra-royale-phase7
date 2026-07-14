@@ -156,7 +156,6 @@ export function SearchBox({
             placeholder="Gericht, Zutat, Küche …"
             autoFocus={autoFocus}
             autoComplete="off"
-            aria-expanded={showPanel}
             aria-controls={listboxId}
             className="h-10 w-full rounded-full border border-input bg-background pl-9 pr-4 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
