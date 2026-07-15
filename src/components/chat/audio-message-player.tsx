@@ -47,6 +47,8 @@ export function AudioMessagePlayer({
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
   const [loadError, setLoadError] = React.useState(false);
+  const durationProbeRef = React.useRef(false);
+  const playAttemptRef = React.useRef(0);
   const sources = React.useMemo(() => {
     const fallback = cloudinaryAudioFallback(src);
     return [
@@ -72,8 +74,13 @@ export function AudioMessagePlayer({
       }
     };
     const onTime = () => {
-      if (audio.currentTime > 1_000_000 && audio.duration === Infinity) {
+      if (durationProbeRef.current && audio.currentTime > 0) {
+        const probedDuration = audio.currentTime;
+        durationProbeRef.current = false;
         audio.currentTime = 0;
+        if (Number.isFinite(probedDuration) && probedDuration > 0) {
+          setDuration(probedDuration);
+        }
         return;
       }
       setCurrentTime(audio.currentTime);
@@ -82,8 +89,13 @@ export function AudioMessagePlayer({
     const onMeta = () => {
       setLoadError(false);
       syncDuration();
-      if (audio.duration === Infinity) {
-        audio.currentTime = Number.MAX_SAFE_INTEGER;
+      if (audio.duration === Infinity && !durationProbeRef.current) {
+        durationProbeRef.current = true;
+        try {
+          audio.currentTime = 1e10;
+        } catch {
+          durationProbeRef.current = false;
+        }
       }
     };
     const onEnded = () => setIsPlaying(false);
@@ -118,16 +130,27 @@ export function AudioMessagePlayer({
     setDuration(0);
     setLoadError(false);
     setIsPlaying(false);
+    durationProbeRef.current = false;
     audioRef.current?.load();
   }, [src]);
 
   async function togglePlayback() {
     const audio = audioRef.current;
     if (!audio || loadError) return;
+    const playAttempt = playAttemptRef.current + 1;
+    playAttemptRef.current = playAttempt;
     try {
       if (audio.paused) {
-        if (audio.readyState === 0) audio.load();
-        await audio.play();
+        if (audio.readyState < 1) audio.load();
+        try {
+          await audio.play();
+        } catch (firstError) {
+          if (playAttemptRef.current !== playAttempt) return;
+          audio.load();
+          await audio.play().catch(() => {
+            throw firstError;
+          });
+        }
         setIsPlaying(true);
       } else {
         audio.pause();
@@ -141,11 +164,17 @@ export function AudioMessagePlayer({
   function seek(value: number) {
     const audio = audioRef.current;
     if (!audio || !duration) return;
-    audio.currentTime = (value / 100) * duration;
+    const nextTime = Math.max(0, Math.min(duration, (value / 100) * duration));
+    audio.currentTime = nextTime;
     setCurrentTime(audio.currentTime);
   }
 
-  const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const displayCurrentTime = duration
+    ? Math.max(0, Math.min(currentTime, duration))
+    : Math.max(0, currentTime);
+  const progress = duration
+    ? Math.min(100, (displayCurrentTime / duration) * 100)
+    : 0;
 
   return (
     <div
@@ -219,7 +248,7 @@ export function AudioMessagePlayer({
           />
         </div>
         <div className="-mt-0.5 flex items-center justify-between text-[10px] tabular-nums opacity-75">
-          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(displayCurrentTime)}</span>
           <span>{loadError ? "--:--" : formatTime(duration)}</span>
         </div>
       </div>

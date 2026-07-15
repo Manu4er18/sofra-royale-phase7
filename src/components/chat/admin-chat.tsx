@@ -16,7 +16,6 @@ import {
   Send,
   Square,
   Trash2,
-  Video,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,7 +47,6 @@ import {
 } from "@/components/i18n/language-provider";
 import { AudioMessagePlayer } from "@/components/chat/audio-message-player";
 import { VideoCallPanel } from "@/components/chat/video-call-panel";
-import { useCallIndicator } from "@/components/chat/call-indicator";
 import { translateSystemMessage } from "@/components/chat/chat-system-copy";
 
 type Message = {
@@ -393,7 +391,6 @@ export function AdminChat({
 }) {
   const router = useRouter();
   const { locale, t } = useLanguage();
-  const call = useCallIndicator();
   const [activeId, setActiveId] = React.useState(initialActive);
   const [messageInbox, setMessageInbox] = React.useState(conversations);
   const [totalUnread, setTotalUnread] = React.useState(initialUnreadTotal);
@@ -427,8 +424,6 @@ export function AdminChat({
   const refreshTimeoutRef = React.useRef<number | null>(null);
   const copy = CHAT_COPY[locale];
   const routeBase = "/admin/messages";
-  const activeConversationCall =
-    call?.active && activeId && call.conversationId === activeId ? call : null;
 
   // Refresh the message pane when switching conversations (server nav).
   function openConversation(id: string) {
@@ -905,13 +900,13 @@ export function AdminChat({
               <div className="flex items-center justify-between gap-2 border-b p-3">
                 <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
                   <span>{copy.conversation}</span>
-                  {activeConversationCall ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-600/10 px-2 py-1 text-[11px] font-semibold text-green-500 shadow-sm">
-                      <Video className="h-3 w-3" />
-                      {t("call.active")}
-                    </span>
-                  ) : null}
                 </p>
+                <VideoCallPanel
+                  conversationId={activeId}
+                  role="STAFF"
+                  disabled={isPending || isUploading}
+                  variant="header"
+                />
                 <div className="flex gap-1.5">
                   <Badge variant={status === "OPEN" ? "gold" : "secondary"}>
                     {STATUS_LABEL[status] ?? status}
@@ -1219,11 +1214,6 @@ export function AdminChat({
                       >
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <VideoCallPanel
-                        conversationId={activeId}
-                        role="STAFF"
-                        disabled={isPending || isUploading}
-                      />
                       <Button
                         type="button"
                         variant={isRecording ? "destructive" : "outline"}

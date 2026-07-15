@@ -70,11 +70,13 @@ export function VideoCallPanel({
   role,
   disabled,
   className,
+  variant = "button",
 }: {
   conversationId: string | null;
   role: ChatRole;
   disabled?: boolean;
   className?: string;
+  variant?: "button" | "header";
 }) {
   const { t } = useLanguage();
   const callCopy = React.useMemo(
@@ -114,6 +116,7 @@ export function VideoCallPanel({
   const localVideoRef = React.useRef<HTMLVideoElement>(null);
   const remoteVideoRef = React.useRef<HTMLVideoElement>(null);
   const lastFallbackSignalAtRef = React.useRef(Date.now() - 5000);
+  const ringTimeoutRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
@@ -126,6 +129,47 @@ export function VideoCallPanel({
   React.useEffect(() => {
     if (!incoming) setSignalConversationId(conversationId);
   }, [conversationId, incoming]);
+
+  const playIncomingTone = React.useCallback(() => {
+    try {
+      const AudioContextImpl =
+        window.AudioContext ||
+        (
+          window as typeof window & {
+            webkitAudioContext?: typeof AudioContext;
+          }
+        ).webkitAudioContext;
+      if (!AudioContextImpl) return;
+      const context = new AudioContextImpl();
+      const playTone = (delay: number, frequency: number) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, context.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(
+          0.12,
+          context.currentTime + delay + 0.03,
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          context.currentTime + delay + 0.35,
+        );
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(context.currentTime + delay);
+        oscillator.stop(context.currentTime + delay + 0.38);
+      };
+      playTone(0, 740);
+      playTone(0.42, 880);
+      ringTimeoutRef.current = window.setTimeout(() => {
+        void context.close().catch(() => undefined);
+        ringTimeoutRef.current = null;
+      }, 1200);
+    } catch {
+      // Browsers can block autoplayed sounds; the visual call UI remains active.
+    }
+  }, []);
 
   const sendSignal = React.useCallback(
     async (
@@ -152,6 +196,10 @@ export function VideoCallPanel({
 
   const stopCall = React.useCallback(() => {
     clearCallIndicator(signalConversationId ?? conversationId);
+    if (ringTimeoutRef.current) {
+      window.clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = null;
+    }
     peerRef.current?.close();
     peerRef.current = null;
     localStream?.getTracks().forEach((track) => track.stop());
@@ -273,6 +321,7 @@ export function VideoCallPanel({
         setIncoming(signal);
         setCallId(signal.callId);
         setSignalConversationId(signal.conversationId);
+        playIncomingTone();
         publishCallIndicator({
           conversationId: signal.conversationId,
           callId: signal.callId,
@@ -344,6 +393,7 @@ export function VideoCallPanel({
       createPeer,
       getLocalStream,
       localStream,
+      playIncomingTone,
       role,
       sendSignal,
       signalConversationId,
@@ -447,7 +497,14 @@ export function VideoCallPanel({
   return (
     <>
       {incoming && !isCalling ? (
-        <div className="fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2 rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur">
+        <div
+          className={cn(
+            "rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur",
+            variant === "header"
+              ? "min-w-0 flex-1 border-green-500/25 bg-green-600/10"
+              : "fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2",
+          )}
+        >
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
               <Video className="h-5 w-5" />
@@ -473,20 +530,28 @@ export function VideoCallPanel({
             </Button>
             <Button
               type="button"
-              size="icon"
+              size={variant === "header" ? "sm" : "icon"}
               variant="destructive"
-              className="h-9 w-9"
+              className={variant === "header" ? undefined : "h-9 w-9"}
               onClick={declineCall}
               aria-label="Зангро рад кардан"
             >
               <PhoneOff className="h-4 w-4" />
+              {variant === "header" ? callCopy.decline : null}
             </Button>
           </div>
         </div>
       ) : null}
 
       {isCalling ? (
-        <div className="fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2 rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur">
+        <div
+          className={cn(
+            "rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur",
+            variant === "header"
+              ? "min-w-0 flex-1 border-green-500/25 bg-green-600/10"
+              : "fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2",
+          )}
+        >
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-gold-foreground">
               <Video className="h-5 w-5" />
@@ -506,21 +571,23 @@ export function VideoCallPanel({
         </div>
       ) : null}
 
-      <Button
-        type="button"
-        variant={isCalling ? "secondary" : "outline"}
-        size="icon"
-        className={cn("h-9 w-9", className)}
-        disabled={disabled || !conversationId}
-        onClick={isCalling ? endCall : startCall}
-        aria-label={isCalling ? "Videoanruf beenden" : "Videoanruf starten"}
-      >
-        {isCalling ? (
-          <PhoneOff className="h-4 w-4" />
-        ) : (
-          <Video className="h-4 w-4" />
-        )}
-      </Button>
+      {variant === "button" || (!incoming && !isCalling) ? (
+        <Button
+          type="button"
+          variant={isCalling ? "secondary" : "outline"}
+          size="icon"
+          className={cn("h-9 w-9", className)}
+          disabled={disabled || !conversationId}
+          onClick={isCalling ? endCall : startCall}
+          aria-label={isCalling ? "Videoanruf beenden" : "Videoanruf starten"}
+        >
+          {isCalling ? (
+            <PhoneOff className="h-4 w-4" />
+          ) : (
+            <Video className="h-4 w-4" />
+          )}
+        </Button>
+      ) : null}
 
       {isCalling ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
