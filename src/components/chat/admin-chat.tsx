@@ -27,6 +27,10 @@ import {
 } from "@/actions/chat";
 import { getPusherClient, clientChannels } from "@/lib/realtime/client";
 import type { AppLocale } from "@/lib/i18n";
+import {
+  createVoiceRecorder,
+  type VoiceRecorder,
+} from "@/lib/audio/voice-recorder";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,26 +261,6 @@ function attachmentLabel(
   return copy.imageReady;
 }
 
-function getSupportedAudioMimeType() {
-  if (typeof MediaRecorder === "undefined") return "";
-  const types = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4;codecs=mp4a.40.2",
-    "audio/mp4",
-  ];
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
-}
-
-function audioExtension(type: string) {
-  const mimeType = type.split(";")[0]?.toLowerCase() ?? "";
-  if (mimeType === "audio/mp4" || mimeType === "audio/x-m4a") return "m4a";
-  if (mimeType === "audio/mpeg") return "mp3";
-  if (mimeType === "audio/ogg") return "ogg";
-  if (mimeType.includes("wav")) return "wav";
-  return "webm";
-}
-
 function initials(name: string | null | undefined) {
   const value = name?.trim() || "SR";
   return value
@@ -420,9 +404,10 @@ export function AdminChat({
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const audioInputRef = React.useRef<HTMLInputElement>(null);
   const documentInputRef = React.useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const audioChunksRef = React.useRef<Blob[]>([]);
+  const voiceRecorderRef = React.useRef<VoiceRecorder | null>(null);
+  const voiceStreamRef = React.useRef<MediaStream | null>(null);
   const lastTypingAtRef = React.useRef(0);
+  const refreshTimeoutRef = React.useRef<number | null>(null);
   const copy = CHAT_COPY[locale];
   const routeBase = "/admin/messages";
 
@@ -481,7 +466,13 @@ export function AdminChat({
     const pusher = getPusherClient();
     if (!pusher) return;
     const staffChannel = pusher.subscribe(clientChannels.staffChat);
-    const onActivity = () => router.refresh();
+    const onActivity = () => {
+      if (refreshTimeoutRef.current) return;
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        router.refresh();
+      }, 1200);
+    };
     staffChannel.bind("new-conversation", onActivity);
     staffChannel.bind("activity", onActivity);
 
@@ -508,6 +499,10 @@ export function AdminChat({
     return () => {
       staffChannel.unbind("new-conversation", onActivity);
       staffChannel.unbind("activity", onActivity);
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       pusher.unsubscribe(clientChannels.staffChat);
       if (activeId) pusher.unsubscribe(clientChannels.chat(activeId));
     };
@@ -538,7 +533,7 @@ export function AdminChat({
           },
         )
         .catch(() => undefined);
-    }, 10000);
+    }, 30000);
     return () => window.clearInterval(poll);
   }, [activeId]);
 
@@ -563,9 +558,7 @@ export function AdminChat({
   React.useEffect(() => {
     return () => {
       callStream?.getTracks().forEach((track) => track.stop());
-      mediaRecorderRef.current?.stream
-        .getTracks()
-        .forEach((track) => track.stop());
+      voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, [callStream]);
 
@@ -636,7 +629,30 @@ export function AdminChat({
 
   async function toggleVoiceRecording() {
     if (isRecording) {
-      mediaRecorderRef.current?.stop();
+      const recorder = voiceRecorderRef.current;
+      const stream = voiceStreamRef.current;
+      voiceRecorderRef.current = null;
+      voiceStreamRef.current = null;
+      setIsRecording(false);
+      if (!recorder) return;
+      try {
+        const audioBlob = await recorder.stop();
+        stream?.getTracks().forEach((track) => track.stop());
+        if (audioBlob.size <= 44) {
+          toast.error("Keine Sprachnachricht aufgenommen.");
+          return;
+        }
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.wav`, {
+          type: "audio/wav",
+        });
+        const uploaded = await uploadMedia(audioFile, "audio", {
+          attach: false,
+        });
+        if (uploaded?.url) sendStaffMessage(null, uploaded.url);
+      } catch (error) {
+        stream?.getTracks().forEach((track) => track.stop());
+        toast.error(getMediaErrorMessage(error, "Овоз сабт нашуд."));
+      }
       return;
     }
     if (!canUseMediaDevices()) {
@@ -645,44 +661,16 @@ export function AdminChat({
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunksRef.current = [];
-      const mimeType = getSupportedAudioMimeType();
-      const recorder = new MediaRecorder(
-        stream,
-        mimeType ? { mimeType } : undefined,
-      );
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        setIsRecording(false);
-        if (audioChunksRef.current.length === 0) {
-          toast.error("Keine Sprachnachricht aufgenommen.");
-          return;
-        }
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        const audioFile = new File(
-          [audioBlob],
-          `voice-${Date.now()}.${audioExtension(audioBlob.type)}`,
-          {
-            type: audioBlob.type,
-          },
-        );
-        void uploadMedia(audioFile, "audio", { attach: false }).then(
-          (uploaded) => {
-            if (!uploaded?.url) return;
-            sendStaffMessage(null, uploaded.url);
-          },
-        );
-      };
-      recorder.start();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+      voiceStreamRef.current = stream;
+      voiceRecorderRef.current = await createVoiceRecorder(stream);
       setIsRecording(true);
     } catch (error) {
+      voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+      voiceStreamRef.current = null;
+      voiceRecorderRef.current = null;
       toast.error(getMediaErrorMessage(error, "Микрофон фаъол нашуд."));
     }
   }
