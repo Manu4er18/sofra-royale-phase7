@@ -12,14 +12,18 @@ import {
   ImagePlus,
   MessageCircle,
   Mic,
+  Pencil,
   Send,
   Square,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   blockChatUser,
+  deleteChatMessage,
+  editChatMessage,
   resolveConversation,
   saveChatNote,
   sendTyping,
@@ -251,6 +255,10 @@ function applyReadReceipt(
   );
 }
 
+function updateMessage(prev: Message[], next: Message) {
+  return prev.map((message) => (message.id === next.id ? next : message));
+}
+
 function attachmentLabel(
   kind: AttachmentKind,
   copy: (typeof CHAT_COPY)[AppLocale],
@@ -390,6 +398,10 @@ export function AdminChat({
   const [status, setStatus] = React.useState(initialStatus);
   const [isBlocked, setIsBlocked] = React.useState(initialIsBlocked);
   const [draft, setDraft] = React.useState("");
+  const [editingMessageId, setEditingMessageId] = React.useState<string | null>(
+    null,
+  );
+  const [messageMenuId, setMessageMenuId] = React.useState<string | null>(null);
   const [attachmentUrl, setAttachmentUrl] = React.useState<string | null>(null);
   const [attachmentKind, setAttachmentKind] =
     React.useState<AttachmentKind>("image");
@@ -481,6 +493,9 @@ export function AdminChat({
       convChannel = pusher.subscribe(clientChannels.chat(activeId));
       convChannel.bind("message", (msg: Message) => {
         setLiveMessages((prev) => mergeMessage(prev, msg));
+      });
+      convChannel.bind("message-updated", (msg: Message) => {
+        setLiveMessages((prev) => updateMessage(prev, msg));
       });
       convChannel.bind(
         "read-receipt",
@@ -627,6 +642,23 @@ export function AdminChat({
     });
   }
 
+  function startEditMessage(message: Message) {
+    if (!message.body || message.imageUrl || message.senderType === "SYSTEM") {
+      return;
+    }
+    setEditingMessageId(message.id);
+    setDraft(message.body);
+    setMessageMenuId(null);
+  }
+
+  function deleteMessage(messageId: string) {
+    setMessageMenuId(null);
+    startTransition(async () => {
+      const result = await deleteChatMessage({ messageId });
+      if (!result.success) toast.error(result.error);
+    });
+  }
+
   async function toggleVoiceRecording() {
     if (isRecording) {
       const recorder = voiceRecorderRef.current;
@@ -722,6 +754,15 @@ export function AdminChat({
     const body = draft.trim();
     if ((!body && !attachmentUrl) || !activeId) return;
     setDraft("");
+    if (editingMessageId) {
+      const messageId = editingMessageId;
+      setEditingMessageId(null);
+      startTransition(async () => {
+        const result = await editChatMessage({ messageId, body });
+        if (!result.success) toast.error(result.error);
+      });
+      return;
+    }
     const attachedImageUrl = attachmentUrl;
     setAttachmentUrl(null);
     sendStaffMessage(body || null, attachedImageUrl);
@@ -890,6 +931,7 @@ export function AdminChat({
                 {liveMessages.map((message) => {
                   const mine = message.senderType === "STAFF";
                   const isSystem = message.senderType === "SYSTEM";
+                  const canMutate = !isSystem && !message.id.startsWith("tmp-");
                   return (
                     <div
                       key={message.id}
@@ -910,8 +952,29 @@ export function AdminChat({
                         </Avatar>
                       ) : null}
                       <span
+                        onContextMenu={(event) => {
+                          if (!canMutate) return;
+                          event.preventDefault();
+                          setMessageMenuId((current) =>
+                            current === message.id ? null : message.id,
+                          );
+                        }}
+                        onPointerDown={() => {
+                          if (!canMutate) return;
+                          const timeout = window.setTimeout(
+                            () => setMessageMenuId(message.id),
+                            550,
+                          );
+                          const clear = () => window.clearTimeout(timeout);
+                          window.addEventListener("pointerup", clear, {
+                            once: true,
+                          });
+                          window.addEventListener("pointercancel", clear, {
+                            once: true,
+                          });
+                        }}
                         className={cn(
-                          "max-w-[68%] rounded-xl px-2.5 py-1.5 text-sm",
+                          "relative max-w-[68%] rounded-xl px-2.5 py-1.5 text-sm",
                           mine
                             ? "bg-gold text-gold-foreground"
                             : isSystem
@@ -919,6 +982,26 @@ export function AdminChat({
                               : "bg-secondary text-secondary-foreground",
                         )}
                       >
+                        {messageMenuId === message.id ? (
+                          <span className="absolute bottom-full right-0 z-20 mb-1 flex overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+                            {!message.imageUrl ? (
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent"
+                                onClick={() => startEditMessage(message)}
+                              >
+                                <Pencil className="h-3 w-3" /> Edit
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 px-2 py-1.5 text-destructive hover:bg-accent"
+                              onClick={() => deleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          </span>
+                        ) : null}
                         {!isSystem && message.senderName ? (
                           <span className="mb-0.5 block text-[10px] font-semibold opacity-70">
                             {message.senderName}
@@ -960,6 +1043,21 @@ export function AdminChat({
 
               <div className="shrink-0 border-t p-3">
                 <form onSubmit={reply} className="space-y-2">
+                  {editingMessageId ? (
+                    <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                      <span>Nachricht bearbeiten</span>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditingMessageId(null);
+                          setDraft("");
+                        }}
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  ) : null}
                   {callStream ? (
                     <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-2">
                       <video

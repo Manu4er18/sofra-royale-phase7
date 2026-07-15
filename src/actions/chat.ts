@@ -48,6 +48,11 @@ const chatCallSignalSchema = z.object({
   payload: z.unknown().optional(),
 });
 
+const chatMessageMutationSchema = z.object({
+  messageId: z.string().cuid(),
+  body: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
 async function pushMessage(
   conversationId: string,
   message: {
@@ -77,6 +82,36 @@ async function pushMessage(
     readAt: message.readAt?.toISOString() ?? null,
   };
   await trigger(channels.chat(conversationId), "message", payload);
+}
+
+async function pushMessageUpdated(
+  conversationId: string,
+  message: {
+    id: string;
+    senderType: string;
+    type: string;
+    body: string | null;
+    imageUrl: string | null;
+    sender?: {
+      name: string | null;
+      email: string | null;
+      image: string | null;
+    } | null;
+    createdAt: Date;
+    readAt?: Date | null;
+  },
+) {
+  await trigger(channels.chat(conversationId), "message-updated", {
+    id: message.id,
+    senderType: message.senderType,
+    type: message.type,
+    body: message.body,
+    imageUrl: message.imageUrl,
+    senderName: message.sender?.name ?? message.sender?.email ?? null,
+    senderImage: message.sender?.image ?? null,
+    createdAt: message.createdAt.toISOString(),
+    readAt: message.readAt?.toISOString() ?? null,
+  });
 }
 
 async function createCallTimelineMessage(
@@ -402,6 +437,97 @@ export async function sendChatCallSignal(
       success: false,
       error: "Call-Signal konnte nicht gesendet werden.",
     };
+  }
+}
+
+async function getMessageMutationAccess(messageId: string) {
+  const session = await auth();
+  const message = await db.chatMessage.findUnique({
+    where: { id: messageId },
+    include: {
+      conversation: {
+        select: { id: true, customerId: true },
+      },
+      sender: { select: { name: true, email: true, image: true } },
+    },
+  });
+  if (!message || message.senderType === "SYSTEM") return null;
+
+  const isStaff = Boolean(
+    session?.user && STAFF_ROLES.includes(session.user.role),
+  );
+  if (isStaff) return { message, isStaff };
+
+  if (message.senderType !== "CUSTOMER") return null;
+  if (message.conversation.customerId) {
+    if (message.conversation.customerId !== session?.user?.id) return null;
+  } else {
+    const token = (await cookies()).get(CHAT_COOKIE)?.value;
+    if (token !== message.conversationId) return null;
+  }
+
+  return { message, isStaff: false };
+}
+
+export async function editChatMessage(
+  rawInput: unknown,
+): Promise<ChatActionResult> {
+  try {
+    const parsed = chatMessageMutationSchema.safeParse(rawInput);
+    if (!parsed.success) return { success: false, error: "Ungültige Nachricht." };
+    const body = parsed.data.body?.trim();
+    if (!body) return { success: false, error: "Text darf nicht leer sein." };
+
+    const access = await getMessageMutationAccess(parsed.data.messageId);
+    if (!access) return { success: false, error: "Kein Zugriff." };
+    if (access.message.imageUrl) {
+      return {
+        success: false,
+        error: "Anhänge können nicht bearbeitet werden.",
+      };
+    }
+
+    const message = await db.chatMessage.update({
+      where: { id: access.message.id },
+      data: { body },
+      include: {
+        sender: { select: { name: true, email: true, image: true } },
+      },
+    });
+    await pushMessageUpdated(message.conversationId, message);
+    return { success: true, conversationId: message.conversationId };
+  } catch (error) {
+    console.error("[editChatMessage]", getErrorMessage(error));
+    return { success: false, error: "Nachricht konnte nicht geändert werden." };
+  }
+}
+
+export async function deleteChatMessage(
+  rawInput: unknown,
+): Promise<ChatActionResult> {
+  try {
+    const parsed = chatMessageMutationSchema.pick({ messageId: true }).safeParse(rawInput);
+    if (!parsed.success) return { success: false, error: "Ungültige Nachricht." };
+
+    const access = await getMessageMutationAccess(parsed.data.messageId);
+    if (!access) return { success: false, error: "Kein Zugriff." };
+
+    const message = await db.chatMessage.update({
+      where: { id: access.message.id },
+      data: {
+        body: "Nachricht gelöscht.",
+        imageUrl: null,
+        type: "TEXT",
+      },
+      include: {
+        sender: { select: { name: true, email: true, image: true } },
+      },
+    });
+    await pushMessageUpdated(message.conversationId, message);
+    return { success: true, conversationId: message.conversationId };
+  } catch (error) {
+    console.error("[deleteChatMessage]", getErrorMessage(error));
+    return { success: false, error: "Nachricht konnte nicht gelöscht werden." };
   }
 }
 

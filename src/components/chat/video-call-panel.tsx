@@ -384,6 +384,61 @@ export function VideoCallPanel({
 
   return (
     <>
+      {incoming && !isCalling ? (
+        <div className="fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2 rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
+              <Video className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">
+                Видео-занги воридшаванда
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {incoming.senderName ?? "Мизоҷ"} занг зада истодааст
+              </span>
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-green-600 text-white hover:bg-green-700"
+              onClick={acceptCall}
+            >
+              <Phone className="h-4 w-4" /> Дохил шудан
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="destructive"
+              className="h-9 w-9"
+              onClick={declineCall}
+              aria-label="Зангро рад кардан"
+            >
+              <PhoneOff className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {isCalling ? (
+        <div className="fixed left-1/2 top-24 z-[85] w-[min(92vw,520px)] -translate-x-1/2 rounded-2xl border bg-background/95 p-3 shadow-premium-lg backdrop-blur">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-gold-foreground">
+              <Video className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Видео-занг</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {isConnected ? "Пайваст шуд" : "Интизорӣ..."}
+              </span>
+            </span>
+            <Button type="button" size="sm" variant="destructive" onClick={endCall}>
+              <PhoneOff className="h-4 w-4" /> Маҳкам
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <Button
         type="button"
         variant={isCalling ? "secondary" : "outline"}
