@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { siteConfig } from "@/config/site";
 import { parseProductFilters } from "@/lib/validations/catalog";
 import { ProductListing } from "@/components/menu/product-listing";
 
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
   title: "Speisekarte",
   description:
     "Die komplette Speisekarte von Sofra Royale: Dubai-Spezialitäten, türkische Grillklassiker, Meze, Desserts und mehr — filtern nach Küche, Preis, vegan, halal und Schärfe.",
+  alternates: { canonical: `${siteConfig.url}/menu` },
+  robots: { index: true, follow: true },
 };
 
 // Filters come from searchParams → always dynamic.
