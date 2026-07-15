@@ -8,6 +8,11 @@ import { sendChatCallSignal } from "@/actions/chat";
 import { clientChannels, getPusherClient } from "@/lib/realtime/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/components/i18n/language-provider";
+import {
+  clearCallIndicator,
+  publishCallIndicator,
+} from "@/components/chat/call-indicator";
 
 type ChatRole = "CUSTOMER" | "STAFF";
 type CallAction =
@@ -43,14 +48,21 @@ function canUseCallDevices() {
   );
 }
 
-function callError(error: unknown) {
+function callError(
+  error: unknown,
+  copy: {
+    permissionDenied: string;
+    deviceNotFound: string;
+    failed: string;
+  },
+) {
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError" || error.name === "SecurityError") {
-      return "Камера ё микрофон иҷозат надорад.";
+      return copy.permissionDenied;
     }
-    if (error.name === "NotFoundError") return "Камера ё микрофон ёфт нашуд.";
+    if (error.name === "NotFoundError") return copy.deviceNotFound;
   }
-  return "Видео-занг фаъол нашуд.";
+  return copy.failed;
 }
 
 export function VideoCallPanel({
@@ -64,6 +76,27 @@ export function VideoCallPanel({
   disabled?: boolean;
   className?: string;
 }) {
+  const { t } = useLanguage();
+  const callCopy = React.useMemo(
+    () => ({
+      incomingTitle: t("call.incomingTitle"),
+      incomingFrom: t("call.incomingFrom"),
+      videoCall: t("call.videoCall"),
+      connected: t("call.connected"),
+      waiting: t("call.waiting"),
+      accept: t("call.accept"),
+      decline: t("call.decline"),
+      join: t("call.join"),
+      end: t("call.end"),
+      permissionRequired: t("call.permissionRequired"),
+      permissionDenied: t("call.permissionDenied"),
+      deviceNotFound: t("call.deviceNotFound"),
+      failed: t("call.failed"),
+      declined: t("call.declined"),
+      ended: t("call.ended"),
+    }),
+    [t],
+  );
   const [callId, setCallId] = React.useState<string | null>(null);
   const [incoming, setIncoming] = React.useState<CallSignal | null>(null);
   const [signalConversationId, setSignalConversationId] = React.useState<
@@ -118,6 +151,7 @@ export function VideoCallPanel({
   );
 
   const stopCall = React.useCallback(() => {
+    clearCallIndicator(signalConversationId ?? conversationId);
     peerRef.current?.close();
     peerRef.current = null;
     localStream?.getTracks().forEach((track) => track.stop());
@@ -127,13 +161,11 @@ export function VideoCallPanel({
     setIsCalling(false);
     setIsConnected(false);
     setCallId(null);
-  }, [localStream]);
+  }, [conversationId, localStream, signalConversationId]);
 
   const getLocalStream = React.useCallback(async () => {
     if (!canUseCallDevices()) {
-      toast.error(
-        "Барои видео-занг HTTPS ва иҷозати камера/микрофон лозим аст.",
-      );
+      toast.error(callCopy.permissionRequired);
       return null;
     }
     try {
@@ -144,10 +176,10 @@ export function VideoCallPanel({
       setLocalStream(stream);
       return stream;
     } catch (error) {
-      toast.error(callError(error));
+      toast.error(callError(error, callCopy));
       return null;
     }
-  }, []);
+  }, [callCopy]);
 
   const createPeer = React.useCallback(
     (nextCallId: string, stream: MediaStream) => {
@@ -200,6 +232,13 @@ export function VideoCallPanel({
     setCallId(incoming.callId);
     setSignalConversationId(incoming.conversationId);
     setIsCalling(true);
+    publishCallIndicator({
+      conversationId: incoming.conversationId,
+      callId: incoming.callId,
+      callerName: incoming.senderName,
+      active: true,
+      direction: "incoming",
+    });
     await sendSignal(
       "accept",
       incoming.callId,
@@ -216,6 +255,7 @@ export function VideoCallPanel({
       undefined,
       incoming.conversationId,
     );
+    clearCallIndicator(incoming.conversationId);
     stopCall();
   }, [incoming, sendSignal, stopCall]);
 
@@ -233,12 +273,20 @@ export function VideoCallPanel({
         setIncoming(signal);
         setCallId(signal.callId);
         setSignalConversationId(signal.conversationId);
+        publishCallIndicator({
+          conversationId: signal.conversationId,
+          callId: signal.callId,
+          callerName: signal.senderName,
+          active: true,
+          direction: "incoming",
+        });
         return;
       }
       if (signal.action === "decline" || signal.action === "end") {
         toast.message(
-          signal.action === "decline" ? "Занг рад шуд." : "Занг қатъ шуд.",
+          signal.action === "decline" ? callCopy.declined : callCopy.ended,
         );
+        clearCallIndicator(signal.conversationId);
         stopCall();
         return;
       }
@@ -264,6 +312,13 @@ export function VideoCallPanel({
           signal.conversationId,
         );
         setIsCalling(true);
+        publishCallIndicator({
+          conversationId: signal.conversationId,
+          callId: signal.callId,
+          callerName: signal.senderName,
+          active: true,
+          direction: "incoming",
+        });
         setIsConnected(true);
         return;
       }
@@ -285,6 +340,7 @@ export function VideoCallPanel({
       }
     },
     [
+      callCopy,
       createPeer,
       getLocalStream,
       localStream,
@@ -374,6 +430,12 @@ export function VideoCallPanel({
     setCallId(nextCallId);
     setSignalConversationId(conversationId);
     setIsCalling(true);
+    publishCallIndicator({
+      conversationId,
+      callId: nextCallId,
+      active: true,
+      direction: "outgoing",
+    });
     await sendSignal("request", nextCallId);
   }
 
@@ -392,10 +454,13 @@ export function VideoCallPanel({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">
-                Видео-занги воридшаванда
+                {callCopy.incomingTitle}
               </span>
               <span className="block truncate text-xs text-muted-foreground">
-                {incoming.senderName ?? "Мизоҷ"} занг зада истодааст
+                {callCopy.incomingFrom.replace(
+                  "{name}",
+                  incoming.senderName ?? "Мизоҷ",
+                )}
               </span>
             </span>
             <Button
@@ -404,7 +469,7 @@ export function VideoCallPanel({
               className="bg-green-600 text-white hover:bg-green-700"
               onClick={acceptCall}
             >
-              <Phone className="h-4 w-4" /> Дохил шудан
+              <Phone className="h-4 w-4" /> {callCopy.join}
             </Button>
             <Button
               type="button"
@@ -427,13 +492,15 @@ export function VideoCallPanel({
               <Video className="h-5 w-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Видео-занг</span>
+              <span className="block text-sm font-semibold">
+                {callCopy.videoCall}
+              </span>
               <span className="block truncate text-xs text-muted-foreground">
-                {isConnected ? "Пайваст шуд" : "Интизорӣ..."}
+                {isConnected ? callCopy.connected : callCopy.waiting}
               </span>
             </span>
             <Button type="button" size="sm" variant="destructive" onClick={endCall}>
-              <PhoneOff className="h-4 w-4" /> Маҳкам
+              <PhoneOff className="h-4 w-4" /> {callCopy.end}
             </Button>
           </div>
         </div>
@@ -461,9 +528,12 @@ export function VideoCallPanel({
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gold/20">
               <Video className="h-7 w-7 text-gold" />
             </div>
-            <p className="text-lg font-semibold">Видео-занги воридшаванда</p>
+            <p className="text-lg font-semibold">{callCopy.incomingTitle}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {incoming.senderName ?? "Мизоҷ"} занг зада истодааст
+              {callCopy.incomingFrom.replace(
+                "{name}",
+                incoming.senderName ?? "Мизоҷ",
+              )}
             </p>
             <div className="mt-5 flex justify-center gap-4">
               <Button
@@ -471,10 +541,10 @@ export function VideoCallPanel({
                 className="bg-green-600 text-white hover:bg-green-700"
                 onClick={acceptCall}
               >
-                <Phone className="h-4 w-4" /> Қабул кардан
+                <Phone className="h-4 w-4" /> {callCopy.accept}
               </Button>
               <Button type="button" variant="destructive" onClick={declineCall}>
-                <PhoneOff className="h-4 w-4" /> Маҳкам кардан
+                <PhoneOff className="h-4 w-4" /> {callCopy.decline}
               </Button>
             </div>
           </div>
@@ -498,7 +568,7 @@ export function VideoCallPanel({
               className="absolute bottom-20 right-4 h-32 w-24 rounded-xl border border-white/30 object-cover shadow-lg sm:h-40 sm:w-32"
             />
             <div className="absolute left-4 top-4 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
-              {isConnected ? "Пайваст шуд" : "Интизорӣ..."}
+              {isConnected ? callCopy.connected : callCopy.waiting}
             </div>
             <div className="absolute bottom-5 left-0 right-0 flex justify-center">
               <Button
@@ -507,7 +577,7 @@ export function VideoCallPanel({
                 size="lg"
                 onClick={endCall}
               >
-                <PhoneOff className="h-5 w-5" /> Маҳкам кардан
+                <PhoneOff className="h-5 w-5" /> {callCopy.end}
               </Button>
             </div>
           </div>

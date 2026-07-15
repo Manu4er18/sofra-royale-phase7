@@ -426,8 +426,14 @@ export async function sendChatCallSignal(
         action as "request" | "accept" | "decline" | "end",
       );
     }
-    if (action === "request" && access.senderType === "CUSTOMER") {
-      await trigger(channels.staffChat, "incoming-call", signal);
+    if (
+      access.senderType === "CUSTOMER" &&
+      ["request", "decline", "end"].includes(action)
+    ) {
+      await trigger(channels.staffChat, "call-status", signal);
+      if (action === "request") {
+        await trigger(channels.staffChat, "incoming-call", signal);
+      }
     }
 
     return { success: true, conversationId };

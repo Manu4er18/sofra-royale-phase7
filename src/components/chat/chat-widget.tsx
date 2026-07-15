@@ -13,6 +13,7 @@ import {
   Send,
   Square,
   Trash2,
+  Video,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +42,11 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AudioMessagePlayer } from "@/components/chat/audio-message-player";
 import { VideoCallPanel } from "@/components/chat/video-call-panel";
+import {
+  useCallIndicator,
+  VideoCallBadge,
+} from "@/components/chat/call-indicator";
+import { translateSystemMessage } from "@/components/chat/chat-system-copy";
 
 type Message = {
   id: string;
@@ -308,7 +314,7 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [guestEmail, setGuestEmail] = React.useState("");
   const [staffTyping, setStaffTyping] = React.useState(false);
   const [isBlocked, setIsBlocked] = React.useState(false);
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [attachmentUrl, setAttachmentUrl] = React.useState<string | null>(null);
   const [attachmentKind, setAttachmentKind] =
     React.useState<AttachmentKind>("image");
@@ -319,6 +325,7 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [callStream, setCallStream] = React.useState<MediaStream | null>(null);
   const [isPending, startTransition] = React.useTransition();
   const [loaded, setLoaded] = React.useState(false);
+  const call = useCallIndicator();
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const callVideoRef = React.useRef<HTMLVideoElement>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
@@ -716,7 +723,9 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
         ) : (
           <MessageCircle className="h-6 w-6" />
         )}
-        {!open && unreadCount > 0 ? (
+        {!open && call?.active ? (
+          <VideoCallBadge />
+        ) : !open && unreadCount > 0 ? (
           <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground ring-2 ring-background">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -736,7 +745,15 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col overflow-hidden border bg-background shadow-premium-lg sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[30rem] sm:w-[calc(100vw-2.5rem)] sm:max-w-sm sm:rounded-xl">
           <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground dark:bg-card dark:text-foreground">
             <div>
-              <p className="font-display font-semibold">{copy.chatTitle}</p>
+              <p className="flex items-center gap-2 font-display font-semibold">
+                <span>{copy.chatTitle}</span>
+                {call?.active ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-600/15 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+                    <Video className="h-3 w-3" />
+                    {t("call.active")}
+                  </span>
+                ) : null}
+              </p>
               <p className="text-xs opacity-80">{copy.subtitle}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -849,7 +866,13 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
                           mine={mine}
                         />
                       ) : null}
-                      {message.body ? <span>{message.body}</span> : null}
+                      {message.body ? (
+                        <span>
+                          {isSystem
+                            ? translateSystemMessage(message.body, t)
+                            : message.body}
+                        </span>
+                      ) : null}
                       <span className="mt-0.5 flex items-center justify-end gap-1 text-[10px] tabular-nums opacity-70">
                         <span>{formatMessageTime(message.createdAt)}</span>
                         {mine ? (

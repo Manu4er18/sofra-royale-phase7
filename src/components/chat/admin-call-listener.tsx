@@ -7,6 +7,11 @@ import { toast } from "sonner";
 
 import { clientChannels, getPusherClient } from "@/lib/realtime/client";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/components/i18n/language-provider";
+import {
+  clearCallIndicator,
+  publishCallIndicator,
+} from "@/components/chat/call-indicator";
 
 type CallSignal = {
   conversationId: string;
@@ -17,6 +22,7 @@ type CallSignal = {
 };
 
 export function AdminCallListener() {
+  const { t } = useLanguage();
   const [incoming, setIncoming] = React.useState<CallSignal | null>(null);
 
   React.useEffect(() => {
@@ -28,16 +34,47 @@ export function AdminCallListener() {
         return;
       }
       setIncoming(signal);
-      toast.message("Видео-занги нав", {
-        description: `${signal.senderName ?? "Мизоҷ"} занг зада истодааст.`,
+      publishCallIndicator({
+        conversationId: signal.conversationId,
+        callId: signal.callId,
+        callerName: signal.senderName,
+        active: true,
+        direction: "incoming",
+      });
+      toast.message(t("call.incomingTitle"), {
+        description: t("call.incomingFrom").replace(
+          "{name}",
+          signal.senderName ?? "Мизоҷ",
+        ),
       });
     };
+    const onStatus = (signal: CallSignal) => {
+      if (signal.senderType !== "CUSTOMER") return;
+      if (signal.action === "request") {
+        publishCallIndicator({
+          conversationId: signal.conversationId,
+          callId: signal.callId,
+          callerName: signal.senderName,
+          active: true,
+          direction: "incoming",
+        });
+        return;
+      }
+      if (signal.action === "decline" || signal.action === "end") {
+        clearCallIndicator(signal.conversationId);
+        setIncoming((current) =>
+          current?.conversationId === signal.conversationId ? null : current,
+        );
+      }
+    };
     channel.bind("incoming-call", onIncoming);
+    channel.bind("call-status", onStatus);
     return () => {
       channel.unbind("incoming-call", onIncoming);
+      channel.unbind("call-status", onStatus);
       pusher.unsubscribe(clientChannels.staffChat);
     };
-  }, []);
+  }, [t]);
 
   if (!incoming) return null;
 
@@ -49,15 +86,18 @@ export function AdminCallListener() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">
-            Видео-занги воридшаванда
+            {t("call.incomingTitle")}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {incoming.senderName ?? "Мизоҷ"} ҳоло видео-занг карда истодааст
+            {t("call.incomingFrom").replace(
+              "{name}",
+              incoming.senderName ?? "Мизоҷ",
+            )}
           </span>
         </span>
         <Button type="button" size="sm" className="bg-green-600 text-white hover:bg-green-700" asChild>
           <Link href={`/admin/messages?c=${incoming.conversationId}`}>
-            <Phone className="h-4 w-4" /> Дохил шудан
+            <Phone className="h-4 w-4" /> {t("call.join")}
           </Link>
         </Button>
         <Button
