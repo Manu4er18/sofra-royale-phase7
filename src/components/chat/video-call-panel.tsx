@@ -522,35 +522,6 @@ export function VideoCallPanel({
         )}
       </Button>
 
-      {incoming && !isCalling ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-2xl border bg-background p-5 text-center shadow-premium-lg">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gold/20">
-              <Video className="h-7 w-7 text-gold" />
-            </div>
-            <p className="text-lg font-semibold">{callCopy.incomingTitle}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {callCopy.incomingFrom.replace(
-                "{name}",
-                incoming.senderName ?? "Мизоҷ",
-              )}
-            </p>
-            <div className="mt-5 flex justify-center gap-4">
-              <Button
-                type="button"
-                className="bg-green-600 text-white hover:bg-green-700"
-                onClick={acceptCall}
-              >
-                <Phone className="h-4 w-4" /> {callCopy.accept}
-              </Button>
-              <Button type="button" variant="destructive" onClick={declineCall}>
-                <PhoneOff className="h-4 w-4" /> {callCopy.decline}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {isCalling ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
           <div className="relative h-full max-h-[720px] w-full max-w-5xl overflow-hidden rounded-2xl bg-black shadow-premium-lg">

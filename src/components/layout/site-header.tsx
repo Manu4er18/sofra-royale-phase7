@@ -30,10 +30,7 @@ import {
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserNav } from "@/components/layout/user-nav";
 import { SearchBox } from "@/components/search/search-box";
-import {
-  useCallIndicator,
-  VideoCallBadge,
-} from "@/components/chat/call-indicator";
+import { StaffCallShortcut } from "@/components/chat/staff-call-shortcut";
 
 /**
  * Sticky site header: brand, nav, search, theme, cart badge, account.
@@ -44,15 +41,16 @@ export function SiteHeader({
   cartCount = 0,
   notificationCount = 0,
   chatUnreadCount = 0,
+  showStaffCallShortcut = false,
 }: {
   cartCount?: number;
   notificationCount?: number;
   chatUnreadCount?: number;
+  showStaffCallShortcut?: boolean;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const { t } = useLanguage();
-  const call = useCallIndicator();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -145,9 +143,7 @@ export function SiteHeader({
             onClick={() => window.dispatchEvent(new Event("sofra:open-chat"))}
           >
             <MessageCircle className="h-5 w-5" />
-            {call?.active ? (
-              <VideoCallBadge />
-            ) : chatUnreadCount > 0 ? (
+            {chatUnreadCount > 0 ? (
               <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[0.7rem] font-bold text-destructive-foreground">
                 {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
               </span>
@@ -174,6 +170,7 @@ export function SiteHeader({
 
           <LanguageSelect compact />
           <ThemeToggle />
+          {showStaffCallShortcut ? <StaffCallShortcut /> : null}
           <UserNav />
 
           {/* Mobile nav */}

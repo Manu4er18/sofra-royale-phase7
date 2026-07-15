@@ -48,10 +48,7 @@ import {
 } from "@/components/i18n/language-provider";
 import { AudioMessagePlayer } from "@/components/chat/audio-message-player";
 import { VideoCallPanel } from "@/components/chat/video-call-panel";
-import {
-  useCallIndicator,
-  VideoCallBadge,
-} from "@/components/chat/call-indicator";
+import { useCallIndicator } from "@/components/chat/call-indicator";
 import { translateSystemMessage } from "@/components/chat/chat-system-copy";
 
 type Message = {
@@ -837,9 +834,7 @@ export function AdminChat({
             </span>
             <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border">
               <MessageCircle className="h-4 w-4" />
-              {call?.active ? (
-                <VideoCallBadge />
-              ) : totalUnread > 0 ? (
+              {totalUnread > 0 ? (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
                   {totalUnread > 99 ? "99+" : totalUnread}
                 </span>
@@ -868,18 +863,7 @@ export function AdminChat({
                   </Avatar>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="inline-flex min-w-0 items-center gap-1.5">
-                        <span className="truncate font-medium">{c.who}</span>
-                        {call?.active && call.conversationId === c.id ? (
-                          <span
-                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-sm"
-                            title={t("call.active")}
-                            aria-label={t("call.active")}
-                          >
-                            <Video className="h-3 w-3" />
-                          </span>
-                        ) : null}
-                      </span>
+                      <span className="truncate font-medium">{c.who}</span>
                       <Badge
                         variant={c.status === "OPEN" ? "gold" : "secondary"}
                         className="shrink-0"
@@ -889,11 +873,6 @@ export function AdminChat({
                     </span>
                   </span>
                 </span>
-                {call?.active && call.conversationId === c.id ? (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-600/15 px-2 py-0.5 text-[11px] font-semibold text-green-500">
-                    <Video className="h-3 w-3" /> {t("call.active")}
-                  </span>
-                ) : null}
                 {c.unreadCount > 0 ? (
                   <span className="mt-1 inline-flex rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
                     {c.unreadCount} {copy.unread}
@@ -927,7 +906,7 @@ export function AdminChat({
                 <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
                   <span>{copy.conversation}</span>
                   {activeConversationCall ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-600/15 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-600/10 px-2 py-1 text-[11px] font-semibold text-green-500 shadow-sm">
                       <Video className="h-3 w-3" />
                       {t("call.active")}
                     </span>

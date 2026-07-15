@@ -9,6 +9,7 @@ import { getStaffUnreadChatSummaries } from "@/lib/services/chat";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminCallListener } from "@/components/chat/admin-call-listener";
 import { AdminMessageButton } from "@/components/chat/admin-message-button";
+import { StaffCallShortcut } from "@/components/chat/staff-call-shortcut";
 import { LanguageSelect } from "@/components/i18n/language-provider";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserNav } from "@/components/layout/user-nav";
@@ -54,6 +55,7 @@ export default async function AdminLayout({
             <LanguageSelect compact />
             <ThemeToggle />
             <AdminMessageButton unread={chatUnread.totalUnread} />
+            <StaffCallShortcut />
             <UserNav />
           </div>
         </div>

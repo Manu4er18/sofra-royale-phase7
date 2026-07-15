@@ -6,10 +6,6 @@ import { usePathname } from "next/navigation";
 import { adminNavGroups } from "@/config/nav";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/i18n/language-provider";
-import {
-  useCallIndicator,
-  VideoCallBadge,
-} from "@/components/chat/call-indicator";
 
 /** Admin sidebar (desktop) / horizontal scroll nav (mobile). */
 export function AdminSidebar({
@@ -19,7 +15,6 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname();
   const { t } = useLanguage();
-  const call = useCallIndicator();
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
@@ -46,15 +41,9 @@ export function AdminSidebar({
                 >
                   <span className="inline-flex items-center gap-2">
                     <span>{item.labelKey ? t(item.labelKey) : item.title}</span>
-                    {item.href === "/admin/messages" ? (
-                      <span className="relative inline-flex h-5 min-w-5 items-center justify-center">
-                        {call?.active ? (
-                          <VideoCallBadge className="static h-5 min-w-5 ring-0" />
-                        ) : messageUnread > 0 ? (
-                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
-                            {messageUnread > 99 ? "99+" : messageUnread}
-                          </span>
-                        ) : null}
+                    {item.href === "/admin/messages" && messageUnread > 0 ? (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
+                        {messageUnread > 99 ? "99+" : messageUnread}
                       </span>
                     ) : null}
                   </span>

@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
+import { STAFF_ROLES } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getCartItemCount } from "@/lib/services/cart";
 import { getCustomerUnreadChatCount } from "@/lib/services/chat";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { AdminCallListener } from "@/components/chat/admin-call-listener";
 import { NotificationListener } from "@/components/layout/notification-listener";
 
 /**
@@ -25,6 +27,7 @@ export default async function SiteLayout({
         getCustomerUnreadChatCount(),
       ])
     : [0, 0];
+  const isStaff = session?.user ? STAFF_ROLES.includes(session.user.role) : false;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -32,12 +35,14 @@ export default async function SiteLayout({
         cartCount={cartCount}
         notificationCount={notificationCount}
         chatUnreadCount={chatUnreadCount}
+        showStaffCallShortcut={isStaff}
       />
       <main id="main-content" className="flex-1">
         {children}
       </main>
       <SiteFooter />
       <ChatWidget isLoggedIn={!!session?.user} />
+      {isStaff ? <AdminCallListener /> : null}
       {session?.user?.id ? (
         <NotificationListener userId={session.user.id} />
       ) : null}
