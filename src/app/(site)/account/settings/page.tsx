@@ -23,6 +23,7 @@ export default async function SettingsPage() {
     select: {
       name: true,
       phone: true,
+      image: true,
       marketingOptIn: true,
       hashedPassword: true,
       email: true,
@@ -42,6 +43,7 @@ export default async function SettingsPage() {
         initial={{
           name: user.name ?? "",
           phone: user.phone ?? "",
+          image: user.image ?? "",
           marketingOptIn: user.marketingOptIn,
         }}
       />

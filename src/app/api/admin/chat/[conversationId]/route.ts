@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { STAFF_ROLES } from "@/lib/auth/rbac";
 import { toMessageViews } from "@/lib/services/chat";
+import { channels, trigger } from "@/lib/realtime/server";
 
 export const dynamic = "force-dynamic";
 
@@ -41,14 +42,26 @@ export async function GET(
     return NextResponse.json({ conversation: null }, { status: 404 });
   }
 
-  await db.chatMessage.updateMany({
-    where: {
-      conversationId,
-      senderType: "CUSTOMER",
-      readAt: null,
-    },
-    data: { readAt: new Date() },
+  const unreadWhere = {
+    conversationId,
+    senderType: "CUSTOMER" as const,
+    readAt: null,
+  };
+  const unreadMessages = await db.chatMessage.findMany({
+    where: unreadWhere,
+    select: { id: true },
   });
+  const readAt = new Date();
+  await db.chatMessage.updateMany({
+    where: unreadWhere,
+    data: { readAt },
+  });
+  if (unreadMessages.length > 0) {
+    void trigger(channels.chat(conversationId), "read-receipt", {
+      messageIds: unreadMessages.map((message) => message.id),
+      readAt: readAt.toISOString(),
+    });
+  }
 
   return NextResponse.json(
     {
@@ -65,6 +78,7 @@ export async function GET(
           senderName: message.senderName,
           senderImage: message.senderImage,
           createdAt: message.createdAt,
+          readAt: message.readAt,
         })),
       },
     },

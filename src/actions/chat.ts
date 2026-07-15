@@ -62,6 +62,7 @@ async function pushMessage(
       image: string | null;
     } | null;
     createdAt: Date;
+    readAt?: Date | null;
   },
 ) {
   const payload = {
@@ -73,6 +74,7 @@ async function pushMessage(
     senderName: message.sender?.name ?? message.sender?.email ?? null,
     senderImage: message.sender?.image ?? null,
     createdAt: message.createdAt.toISOString(),
+    readAt: message.readAt?.toISOString() ?? null,
   };
   await trigger(channels.chat(conversationId), "message", payload);
 }

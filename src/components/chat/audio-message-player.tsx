@@ -29,9 +29,10 @@ function cloudinaryAudioFallback(url: string) {
   }
   const [path, query] = url.split("?");
   if (!path || !/\.(webm|m4a|mp4|aac|ogg|wav)$/i.test(path)) return null;
-  return `${path.replace(/\.(webm|m4a|mp4|aac|ogg|wav)$/i, ".mp3")}${
-    query ? `?${query}` : ""
-  }`;
+  const transformedPath = path
+    .replace("/video/upload/", "/video/upload/f_mp3/")
+    .replace(/\.(webm|m4a|mp4|aac|ogg|wav)$/i, ".mp3");
+  return `${transformedPath}${query ? `?${query}` : ""}`;
 }
 
 export function AudioMessagePlayer({

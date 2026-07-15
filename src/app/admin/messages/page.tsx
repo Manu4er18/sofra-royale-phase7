@@ -8,6 +8,7 @@ import {
   getStaffUnreadChatSummaries,
   toMessageViews,
 } from "@/lib/services/chat";
+import { channels, trigger } from "@/lib/realtime/server";
 import {
   AdminChat,
   type ConversationListItem,
@@ -36,10 +37,20 @@ export default async function AdminMessagesPage(props: {
       senderType: "CUSTOMER",
       readAt: null,
     };
+    const unreadMessages = await db.chatMessage.findMany({
+      where: unread,
+      select: { id: true },
+    });
     await db.chatMessage.updateMany({
       where: unread,
       data: { readAt: new Date() },
     });
+    if (unreadMessages.length > 0) {
+      void trigger(channels.chat(activeId), "read-receipt", {
+        messageIds: unreadMessages.map((message) => message.id),
+        readAt: new Date().toISOString(),
+      });
+    }
   }
 
   const [conversationList, unreadSummary] = await Promise.all([
@@ -139,6 +150,7 @@ export default async function AdminMessagesPage(props: {
           senderName: m.senderName,
           senderImage: m.senderImage,
           createdAt: m.createdAt,
+          readAt: m.readAt,
         }))}
         initialNote={initialNote}
         initialStatus={initialStatus}

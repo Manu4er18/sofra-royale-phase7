@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // ---------------------------------------------------------------------------
 // Profile
@@ -38,15 +39,49 @@ import {
 export function ProfileForm({
   initial,
 }: {
-  initial: { name: string; phone: string; marketingOptIn: boolean };
+  initial: {
+    name: string;
+    phone: string;
+    image: string;
+    marketingOptIn: boolean;
+  };
 }) {
   const router = useRouter();
   const [name, setName] = React.useState(initial.name);
   const [phone, setPhone] = React.useState(initial.phone);
+  const [image, setImage] = React.useState(initial.image);
   const [marketingOptIn, setMarketingOptIn] = React.useState(
     initial.marketingOptIn,
   );
+  const [isUploading, setIsUploading] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+
+  async function uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.set("avatar", file);
+    setIsUploading(true);
+    try {
+      const response = await fetch("/api/account/avatar", {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json()) as {
+        imageUrl?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.imageUrl) {
+        toast.error(result.error ?? "Profilbild konnte nicht hochgeladen werden.");
+        return;
+      }
+      setImage(result.imageUrl);
+      toast.success("Profilbild aktualisiert.");
+      router.refresh();
+    } finally {
+      setIsUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -70,6 +105,42 @@ export function ProfileForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-4 sm:col-span-2">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={image || undefined} alt="" />
+              <AvatarFallback>
+                {name
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0]?.toUpperCase())
+                  .join("") || "SR"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-2">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadAvatar(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                loading={isUploading}
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+                Profilbild ändern
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                JPG, PNG, WebP oder GIF bis 5 MB.
+              </p>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="profile-name">Name</Label>
             <Input

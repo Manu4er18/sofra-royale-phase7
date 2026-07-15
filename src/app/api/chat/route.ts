@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getMyConversation, toMessageViews } from "@/lib/services/chat";
 import { db } from "@/lib/db";
+import { channels, trigger } from "@/lib/realtime/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,19 +26,34 @@ export async function GET(request: Request) {
   ).length;
 
   if (markRead && unreadCount > 0) {
+    const unreadMessages = await db.chatMessage.findMany({
+      where: {
+        conversationId: conversation.id,
+        senderType: "STAFF",
+        readAt: null,
+      },
+      select: { id: true },
+    });
+    const readAt = new Date();
     await db.chatMessage.updateMany({
       where: {
         conversationId: conversation.id,
         senderType: "STAFF",
         readAt: null,
       },
-      data: { readAt: new Date() },
+      data: { readAt },
     });
     messages = messages.map((message) =>
       message.senderType === "STAFF" && !message.readAt
-        ? { ...message, readAt: new Date().toISOString() }
+        ? { ...message, readAt: readAt.toISOString() }
         : message,
     );
+    if (unreadMessages.length > 0) {
+      void trigger(channels.chat(conversation.id), "read-receipt", {
+        messageIds: unreadMessages.map((message) => message.id),
+        readAt: readAt.toISOString(),
+      });
+    }
     unreadCount = 0;
   }
 

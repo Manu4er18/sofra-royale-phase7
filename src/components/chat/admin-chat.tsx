@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Ban,
   Check,
+  CheckCheck,
   FileText,
   FileVideo,
   ImagePlus,
@@ -47,6 +48,7 @@ type Message = {
   senderName?: string | null;
   senderImage?: string | null;
   createdAt: string;
+  readAt?: string | null;
 };
 
 type AttachmentKind = "image" | "video" | "audio" | "document";
@@ -232,6 +234,17 @@ function mergeMessage(prev: Message[], msg: Message) {
   );
   if (tempIndex === -1) return [...prev, msg];
   return prev.map((message, index) => (index === tempIndex ? msg : message));
+}
+
+function applyReadReceipt(
+  messages: Message[],
+  data: { messageIds?: string[]; readAt?: string },
+) {
+  const ids = new Set(data.messageIds ?? []);
+  if (ids.size === 0 || !data.readAt) return messages;
+  return messages.map((message) =>
+    ids.has(message.id) ? { ...message, readAt: data.readAt ?? null } : message,
+  );
 }
 
 function attachmentLabel(
@@ -479,6 +492,12 @@ export function AdminChat({
         setLiveMessages((prev) => mergeMessage(prev, msg));
       });
       convChannel.bind(
+        "read-receipt",
+        (data: { messageIds?: string[]; readAt?: string }) => {
+          setLiveMessages((prev) => applyReadReceipt(prev, data));
+        },
+      );
+      convChannel.bind(
         "access",
         (data: { isBlocked?: boolean; status?: string }) => {
           if (typeof data.isBlocked === "boolean") setIsBlocked(data.isBlocked);
@@ -601,6 +620,7 @@ export function AdminChat({
         imageUrl,
         senderName: "Team",
         senderImage: null,
+        readAt: null,
         createdAt: new Date().toISOString(),
       }),
     );
@@ -923,8 +943,15 @@ export function AdminChat({
                           />
                         ) : null}
                         {message.body ? <span>{message.body}</span> : null}
-                        <span className="mt-0.5 block text-right text-[10px] tabular-nums opacity-70">
-                          {formatMessageTime(message.createdAt)}
+                        <span className="mt-0.5 flex items-center justify-end gap-1 text-[10px] tabular-nums opacity-70">
+                          <span>{formatMessageTime(message.createdAt)}</span>
+                          {mine ? (
+                            message.readAt ? (
+                              <CheckCheck className="h-3 w-3" />
+                            ) : (
+                              <Check className="h-3 w-3" />
+                            )
+                          ) : null}
                         </span>
                       </span>
                       {mine ? (

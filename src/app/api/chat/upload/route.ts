@@ -182,6 +182,7 @@ async function uploadToCloudinary(file: File, kind: MediaKind) {
   uploadData.set(
     "file",
     new Blob([await file.arrayBuffer()], { type: normalizeMime(file.type) }),
+    file.name || `chat-${kind}.${MEDIA_RULES[kind].fallbackExt}`,
   );
   uploadData.set("api_key", apiKey);
   uploadData.set("folder", uploadParams.folder);
