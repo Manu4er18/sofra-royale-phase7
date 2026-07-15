@@ -34,6 +34,7 @@ import type { AppLocale } from "@/lib/i18n";
 import {
   createVoiceRecorder,
   type VoiceRecorder,
+  voiceBlobExtension,
 } from "@/lib/audio/voice-recorder";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -674,9 +675,11 @@ export function AdminChat({
           toast.error("Keine Sprachnachricht aufgenommen.");
           return;
         }
-        const audioFile = new File([audioBlob], `voice-${Date.now()}.wav`, {
-          type: "audio/wav",
-        });
+        const audioFile = new File(
+          [audioBlob],
+          `voice-${Date.now()}.${voiceBlobExtension(audioBlob.type)}`,
+          { type: audioBlob.type },
+        );
         const uploaded = await uploadMedia(audioFile, "audio", {
           attach: false,
         });
@@ -983,11 +986,11 @@ export function AdminChat({
                         )}
                       >
                         {messageMenuId === message.id ? (
-                          <span className="absolute bottom-full right-0 z-20 mb-1 flex overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+                          <span className="absolute bottom-full right-0 z-20 mb-1 flex overflow-hidden rounded-md border border-gold/30 bg-background text-xs text-foreground shadow-lg">
                             {!message.imageUrl ? (
                               <button
                                 type="button"
-                                className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent"
+                                className="flex items-center gap-1 px-3 py-2 font-medium hover:bg-accent"
                                 onClick={() => startEditMessage(message)}
                               >
                                 <Pencil className="h-3 w-3" /> Edit
@@ -995,7 +998,7 @@ export function AdminChat({
                             ) : null}
                             <button
                               type="button"
-                              className="flex items-center gap-1 px-2 py-1.5 text-destructive hover:bg-accent"
+                              className="flex items-center gap-1 px-3 py-2 font-medium text-destructive hover:bg-accent"
                               onClick={() => deleteMessage(message.id)}
                             >
                               <Trash2 className="h-3 w-3" /> Delete

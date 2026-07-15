@@ -56,7 +56,60 @@ export type VoiceRecorder = {
   stop: () => Promise<Blob>;
 };
 
+function getSupportedMediaRecorderType() {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4;codecs=mp4a.40.2",
+    "audio/mp4",
+  ];
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+}
+
+export function voiceBlobExtension(type: string) {
+  const mimeType = type.split(";")[0]?.toLowerCase() ?? "";
+  if (mimeType === "audio/mp4" || mimeType === "audio/x-m4a") return "m4a";
+  if (mimeType === "audio/mpeg") return "mp3";
+  if (mimeType === "audio/ogg") return "ogg";
+  if (mimeType.includes("wav")) return "wav";
+  return "webm";
+}
+
+function createMediaRecorderVoiceRecorder(stream: MediaStream): VoiceRecorder | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  const chunks: Blob[] = [];
+  const mimeType = getSupportedMediaRecorderType();
+  const recorder = new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    audioBitsPerSecond: 128_000,
+  });
+  const stopped = new Promise<Blob>((resolve, reject) => {
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+    recorder.onerror = (event) => reject(event);
+    recorder.onstop = () => {
+      resolve(
+        new Blob(chunks, {
+          type: recorder.mimeType || mimeType || "audio/webm",
+        }),
+      );
+    };
+  });
+  recorder.start(250);
+  return {
+    stop: async () => {
+      if (recorder.state !== "inactive") recorder.stop();
+      return stopped;
+    },
+  };
+}
+
 export async function createVoiceRecorder(stream: MediaStream): Promise<VoiceRecorder> {
+  const mediaRecorder = createMediaRecorderVoiceRecorder(stream);
+  if (mediaRecorder) return mediaRecorder;
+
   const AudioContextImpl = getAudioContextConstructor();
   if (!AudioContextImpl) {
     throw new DOMException("AudioContext is not supported", "NotSupportedError");

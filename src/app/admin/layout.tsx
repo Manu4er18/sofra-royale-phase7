@@ -8,6 +8,7 @@ import { siteConfig } from "@/config/site";
 import { getStaffUnreadChatSummaries } from "@/lib/services/chat";
 import { Button } from "@/components/ui/button";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminCallListener } from "@/components/chat/admin-call-listener";
 import { LanguageSelect } from "@/components/i18n/language-provider";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserNav } from "@/components/layout/user-nav";
@@ -27,6 +28,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
+      <AdminCallListener />
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
           <Link href="/admin" className="flex items-center gap-2.5">

@@ -15,11 +15,13 @@ import {
   type ConfiguratorProduct,
 } from "@/components/product/product-configurator";
 import { ReviewList } from "@/components/product/review-list";
+import { ReviewDialog } from "@/components/account/review-dialog";
 import { ProductGrid } from "@/components/menu/product-grid";
 import { Price } from "@/components/menu/price";
 import { RatingStars } from "@/components/menu/rating-stars";
 import { DietaryBadges, StatusBadges } from "@/components/menu/product-badges";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 export const dynamic = "force-dynamic";
@@ -331,6 +333,17 @@ export default async function ProductDetailPage(props: {
         averageRating={product.averageRating}
         reviewCount={product.reviewCount}
       />
+      <div className="-mt-4">
+        <ReviewDialog
+          productId={product.id}
+          productName={product.name}
+          trigger={
+            <Button type="button" variant="gold">
+              Bewertung schreiben
+            </Button>
+          }
+        />
+      </div>
 
       {related.length > 0 ? (
         <section aria-labelledby="related-heading" className="space-y-6">

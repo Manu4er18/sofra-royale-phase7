@@ -29,6 +29,7 @@ import { getPusherClient, clientChannels } from "@/lib/realtime/client";
 import {
   createVoiceRecorder,
   type VoiceRecorder,
+  voiceBlobExtension,
 } from "@/lib/audio/voice-recorder";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -594,9 +595,11 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
           toast.error("Keine Sprachnachricht aufgenommen.");
           return;
         }
-        const audioFile = new File([audioBlob], `voice-${Date.now()}.wav`, {
-          type: "audio/wav",
-        });
+        const audioFile = new File(
+          [audioBlob],
+          `voice-${Date.now()}.${voiceBlobExtension(audioBlob.type)}`,
+          { type: audioBlob.type },
+        );
         const uploaded = await uploadMedia(audioFile, "audio", {
           attach: false,
         });
@@ -720,6 +723,15 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
         ) : null}
       </button>
 
+      {conversationId && !open ? (
+        <VideoCallPanel
+          conversationId={conversationId}
+          role="CUSTOMER"
+          disabled={isBlocked}
+          className="hidden"
+        />
+      ) : null}
+
       {open ? (
         <div className="fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col overflow-hidden border bg-background shadow-premium-lg sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[30rem] sm:w-[calc(100vw-2.5rem)] sm:max-w-sm sm:rounded-xl">
           <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground dark:bg-card dark:text-foreground">
@@ -807,11 +819,11 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
                       )}
                     >
                       {messageMenuId === message.id ? (
-                        <span className="absolute bottom-full right-0 z-20 mb-1 flex overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+                        <span className="absolute bottom-full right-0 z-20 mb-1 flex overflow-hidden rounded-md border border-gold/30 bg-background text-xs text-foreground shadow-lg">
                           {!message.imageUrl ? (
                             <button
                               type="button"
-                              className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent"
+                              className="flex items-center gap-1 px-3 py-2 font-medium hover:bg-accent"
                               onClick={() => startEditMessage(message)}
                             >
                               <Pencil className="h-3 w-3" /> Edit
@@ -819,7 +831,7 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
                           ) : null}
                           <button
                             type="button"
-                            className="flex items-center gap-1 px-2 py-1.5 text-destructive hover:bg-accent"
+                            className="flex items-center gap-1 px-3 py-2 font-medium text-destructive hover:bg-accent"
                             onClick={() => deleteMessage(message.id)}
                           >
                             <Trash2 className="h-3 w-3" /> Delete

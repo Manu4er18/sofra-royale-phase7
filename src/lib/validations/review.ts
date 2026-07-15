@@ -14,12 +14,17 @@ export const reviewSchema = z.object({
     .trim()
     .min(10, "Bitte mindestens 10 Zeichen schreiben.")
     .max(2000),
+  imageUrls: z
+    .array(z.string().trim().url())
+    .max(4, "Maximal 4 Fotos hochladen.")
+    .optional()
+    .default([]),
 });
 
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
 export const updateReviewSchema = reviewSchema
-  .omit({ productId: true, orderId: true })
+  .omit({ productId: true, orderId: true, imageUrls: true })
   .extend({ reviewId: z.string().cuid() });
 
 export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;

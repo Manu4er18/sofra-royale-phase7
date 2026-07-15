@@ -59,7 +59,7 @@ export async function createReview(
 
     const product = await db.product.findUnique({
       where: { id: input.productId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, slug: true },
     });
     if (!product) return { success: false, error: "Gericht nicht gefunden." };
 
@@ -95,16 +95,24 @@ export async function createReview(
         rating: input.rating,
         title: input.title || null,
         body: input.body,
-        status: "PENDING",
+        status: "APPROVED",
         isVerifiedPurchase: !!purchase,
+        images: {
+          create: input.imageUrls.map((url) => ({
+            url,
+            altText: `Foto zu ${product.name}`,
+          })),
+        },
       },
     });
+    await recomputeAggregates(input.productId);
 
     revalidatePath("/account/reviews");
+    revalidatePath(`/menu/${product.slug}`);
     return {
       success: true,
       message:
-        "Vielen Dank! Ihre Bewertung wird geprüft und erscheint in Kürze.",
+        "Vielen Dank! Ihre Bewertung wurde veröffentlicht.",
     };
   } catch (error) {
     console.error("[createReview]", getErrorMessage(error));
