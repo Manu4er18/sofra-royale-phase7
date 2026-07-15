@@ -202,15 +202,32 @@ const CHAT_COPY: Record<
 };
 
 function getAttachmentKind(url: string): AttachmentKind {
-  if (url.includes("/document/")) return "document";
-  if (url.includes("/video/")) return "video";
-  if (url.includes("/audio/")) return "audio";
-  if (/\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i.test(url)) return "document";
-  if (/\.(mp4|mov)$/i.test(url)) return "video";
-  if (/\.(m4a|mp3|ogg|wav)$/i.test(url)) {
+  if (url.includes("/chat/document/") || url.includes("/document/")) {
+    return "document";
+  }
+  if (url.includes("/chat/audio/") || url.includes("/audio/")) {
     return "audio";
   }
+  if (url.includes("/chat/video/") || url.includes("/video/")) return "video";
+  if (/\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i.test(url)) return "document";
+  if (/\.(m4a|mp3|ogg|wav|aac)$/i.test(url)) {
+    return "audio";
+  }
+  if (/\.(mp4|mov|webm)$/i.test(url)) return "video";
   return "image";
+}
+
+function mergeMessage(prev: Message[], msg: Message) {
+  if (prev.some((message) => message.id === msg.id)) return prev;
+  const tempIndex = prev.findIndex(
+    (message) =>
+      message.id.startsWith("tmp-") &&
+      message.senderType === msg.senderType &&
+      (message.body ?? null) === (msg.body ?? null) &&
+      (message.imageUrl ?? null) === (msg.imageUrl ?? null),
+  );
+  if (tempIndex === -1) return [...prev, msg];
+  return prev.map((message, index) => (index === tempIndex ? msg : message));
 }
 
 function attachmentLabel(
@@ -439,9 +456,7 @@ export function AdminChat({
     if (activeId) {
       convChannel = pusher.subscribe(clientChannels.chat(activeId));
       convChannel.bind("message", (msg: Message) => {
-        setLiveMessages((prev) =>
-          prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
-        );
+        setLiveMessages((prev) => mergeMessage(prev, msg));
       });
       convChannel.bind(
         "access",
