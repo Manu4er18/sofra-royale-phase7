@@ -4,6 +4,8 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 
+import { LanguageProvider } from "@/components/i18n/language-provider";
+
 /**
  * Global client providers.
  *
@@ -16,15 +18,17 @@ import { Toaster } from "sonner";
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        {children}
-        <Toaster richColors position="bottom-center" closeButton />
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors position="bottom-center" closeButton />
+        </ThemeProvider>
+      </LanguageProvider>
     </SessionProvider>
   );
 }

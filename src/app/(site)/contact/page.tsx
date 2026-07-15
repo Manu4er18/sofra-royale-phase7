@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "Kontakt",
   description:
-    "So erreichen Sie Sofra Royale — Adresse, Telefon, E-Mail, Öffnungszeiten und Live-Chat.",
+    "So erreichen Sie Sofra Royale — Adresse, Telefon, E-Mail, Öffnungszeiten und Messages.",
   alternates: { canonical: `${siteConfig.url}/contact` },
 };
 
@@ -44,7 +44,7 @@ export default async function ContactPage() {
     <ProsePage
       title="Kontakt"
       eyebrow="Wir sind für Sie da"
-      intro="Fragen zu Ihrer Bestellung, einer Reservierung oder Allergenen? Melden Sie sich — am schnellsten über den Live-Chat unten rechts."
+      intro="Fragen zu Ihrer Bestellung, einer Reservierung oder Allergenen? Melden Sie sich — am schnellsten über den Messages unten rechts."
     >
       <ul className="not-prose grid gap-4 sm:grid-cols-2">
         {items.map((item) => (

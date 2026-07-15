@@ -7,15 +7,20 @@ export type NavItem = {
   title: string;
   href: string;
   description?: string;
+  labelKey?: TranslationKey;
 };
 
 /** Main header navigation (public). */
 export const mainNav: NavItem[] = [
-  { title: "Speisekarte", href: "/menu" },
-  { title: "Dubai", href: "/dubai" },
-  { title: "Türkisch", href: "/turkish" },
-  { title: "Angebote", href: "/offers" },
-  { title: "Reservieren", href: "/reservations" },
+  { title: "Speisekarte", href: "/menu", labelKey: "site.nav.menu" },
+  { title: "Dubai", href: "/dubai", labelKey: "site.nav.dubai" },
+  { title: "Türkisch", href: "/turkish", labelKey: "site.nav.turkish" },
+  { title: "Angebote", href: "/offers", labelKey: "site.nav.offers" },
+  {
+    title: "Reservieren",
+    href: "/reservations",
+    labelKey: "site.nav.reservations",
+  },
 ];
 
 /** Footer: explore column. */
@@ -67,33 +72,81 @@ export const accountNav: NavItem[] = [
 ];
 
 /** Admin dashboard navigation, grouped for the sidebar. */
-export const adminNavGroups: Array<{ title: string; items: NavItem[] }> = [
+export const adminNavGroups: Array<{
+  title: string;
+  labelKey: TranslationKey;
+  items: NavItem[];
+}> = [
   {
     title: "Betrieb",
+    labelKey: "admin.nav.business",
     items: [
-      { title: "Übersicht", href: "/admin" },
-      { title: "Bestellungen", href: "/admin/orders" },
-      { title: "Live-Chat", href: "/admin/chat" },
-      { title: "Reservierungen", href: "/admin/reservations" },
-      { title: "Bewertungen", href: "/admin/reviews" },
+      { title: "Übersicht", href: "/admin", labelKey: "admin.nav.overview" },
+      {
+        title: "Bestellungen",
+        href: "/admin/orders",
+        labelKey: "admin.nav.orders",
+      },
+      {
+        title: "Messages",
+        href: "/admin/messages",
+        labelKey: "admin.nav.messages",
+      },
+      {
+        title: "Reservierungen",
+        href: "/admin/reservations",
+        labelKey: "admin.nav.reservations",
+      },
+      {
+        title: "Bewertungen",
+        href: "/admin/reviews",
+        labelKey: "admin.nav.reviews",
+      },
     ],
   },
   {
     title: "Katalog",
+    labelKey: "admin.nav.catalog",
     items: [
-      { title: "Speisekarte", href: "/admin/menu" },
-      { title: "Gutscheine", href: "/admin/coupons" },
-      { title: "Liefergebiete", href: "/admin/zones" },
+      { title: "Speisekarte", href: "/admin/menu", labelKey: "admin.nav.menu" },
+      {
+        title: "Gutscheine",
+        href: "/admin/coupons",
+        labelKey: "admin.nav.coupons",
+      },
+      {
+        title: "Liefergebiete",
+        href: "/admin/zones",
+        labelKey: "admin.nav.zones",
+      },
     ],
   },
   {
     title: "Verwaltung",
+    labelKey: "admin.nav.management",
     items: [
-      { title: "Kunden", href: "/admin/customers" },
-      { title: "Rollen & Rechte", href: "/admin/roles" },
-      { title: "Analysen", href: "/admin/analytics" },
-      { title: "Inhalte & Einstellungen", href: "/admin/content" },
-      { title: "Audit-Log", href: "/admin/audit" },
+      {
+        title: "Kunden",
+        href: "/admin/customers",
+        labelKey: "admin.nav.customers",
+      },
+      {
+        title: "Rollen & Rechte",
+        href: "/admin/roles",
+        labelKey: "admin.nav.roles",
+      },
+      {
+        title: "Analysen",
+        href: "/admin/analytics",
+        labelKey: "admin.nav.analytics",
+      },
+      {
+        title: "Inhalte & Einstellungen",
+        href: "/admin/content",
+        labelKey: "admin.nav.content",
+      },
+      { title: "Audit-Log", href: "/admin/audit", labelKey: "admin.nav.audit" },
     ],
   },
 ];
+import type { TranslationKey } from "@/lib/i18n";

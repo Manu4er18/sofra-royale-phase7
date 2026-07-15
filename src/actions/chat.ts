@@ -14,6 +14,7 @@ import {
   startChatSchema,
 } from "@/lib/validations/chat";
 import { CHAT_COOKIE } from "@/lib/services/chat";
+import { storeChatCallSignal } from "@/lib/services/chat-call-signals";
 import { channels, trigger } from "@/lib/realtime/server";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
 import { logAudit } from "@/lib/audit";
@@ -28,6 +29,24 @@ export type ChatActionResult =
       status?: string;
     }
   | { success: false; error: string };
+
+type ChatCallSignalResult =
+  { success: true; conversationId: string } | { success: false; error: string };
+
+const chatCallSignalSchema = z.object({
+  conversationId: z.string().cuid(),
+  callId: z.string().min(8).max(80),
+  action: z.enum([
+    "request",
+    "accept",
+    "decline",
+    "end",
+    "offer",
+    "answer",
+    "ice",
+  ]),
+  payload: z.unknown().optional(),
+});
 
 async function pushMessage(
   conversationId: string,
@@ -63,6 +82,7 @@ export async function startChat(rawInput: unknown): Promise<ChatActionResult> {
     }
     const input = parsed.data;
     const session = await auth();
+    const body = input.message?.trim() || null;
 
     // Abuse guard.
     const key = `chat:start:${session?.user?.id ?? input.guestEmail ?? "anon"}`;
@@ -92,7 +112,8 @@ export async function startChat(rawInput: unknown): Promise<ChatActionResult> {
       if (existing) {
         return sendMessage({
           conversationId: existing.id,
-          body: input.message,
+          body,
+          imageUrl: input.imageUrl,
         });
       }
     }
@@ -108,8 +129,9 @@ export async function startChat(rawInput: unknown): Promise<ChatActionResult> {
           create: {
             senderId: session?.user?.id ?? null,
             senderType: "CUSTOMER",
-            type: "TEXT",
-            body: input.message,
+            type: input.imageUrl ? "IMAGE" : "TEXT",
+            body,
+            imageUrl: input.imageUrl ?? null,
           },
         },
       },
@@ -154,7 +176,8 @@ export async function sendMessage(
     if (!parsed.success) {
       return { success: false, error: "Ungültige Nachricht." };
     }
-    const { conversationId, body, imageUrl } = parsed.data;
+    const { conversationId, imageUrl } = parsed.data;
+    const body = parsed.data.body?.trim() || null;
     const session = await auth();
 
     const conversation = await db.chatConversation.findUnique({
@@ -203,7 +226,7 @@ export async function sendMessage(
         senderId: session?.user?.id ?? null,
         senderType: "CUSTOMER",
         type: imageUrl ? "IMAGE" : "TEXT",
-        body: body || null,
+        body,
         imageUrl: imageUrl ?? null,
       },
     });
@@ -233,6 +256,95 @@ export async function sendTyping(conversationId: unknown): Promise<void> {
   void trigger(channels.chat(parsed.data), "typing", { who });
 }
 
+async function canSignalConversation(conversationId: string) {
+  const session = await auth();
+  const conversation = await db.chatConversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      id: true,
+      customerId: true,
+      guestName: true,
+      guestEmail: true,
+      customer: { select: { name: true, email: true, isChatBlocked: true } },
+    },
+  });
+  if (!conversation) return null;
+
+  const isStaff = Boolean(
+    session?.user && STAFF_ROLES.includes(session.user.role),
+  );
+  if (isStaff) {
+    return {
+      conversation,
+      senderType: "STAFF" as const,
+      senderName: session?.user.name ?? session?.user.email ?? "Team",
+    };
+  }
+
+  if (conversation.customerId) {
+    if (conversation.customerId !== session?.user?.id) return null;
+    if (conversation.customer?.isChatBlocked) return null;
+  } else {
+    const token = (await cookies()).get(CHAT_COOKIE)?.value;
+    if (token !== conversation.id) return null;
+  }
+
+  return {
+    conversation,
+    senderType: "CUSTOMER" as const,
+    senderName:
+      conversation.customer?.name ??
+      conversation.guestName ??
+      conversation.customer?.email ??
+      conversation.guestEmail ??
+      "Gast",
+  };
+}
+
+/** WebRTC call signaling. Media streams stay peer-to-peer; only metadata travels through Pusher. */
+export async function sendChatCallSignal(
+  rawInput: unknown,
+): Promise<ChatCallSignalResult> {
+  try {
+    const parsed = chatCallSignalSchema.safeParse(rawInput);
+    if (!parsed.success) return { success: false, error: "Ungültiges Signal." };
+    const { conversationId, callId, action, payload } = parsed.data;
+
+    if (!checkRateLimit(`chat:call:${conversationId}`, 120, 60_000)) {
+      return { success: false, error: "Zu viele Call-Signale." };
+    }
+
+    const access = await canSignalConversation(conversationId);
+    if (!access) {
+      return { success: false, error: "Kein Zugriff auf diese Unterhaltung." };
+    }
+
+    const signal = {
+      conversationId,
+      callId,
+      action,
+      payload,
+      senderType: access.senderType,
+      senderName: access.senderName,
+      sentAt: new Date().toISOString(),
+    };
+
+    storeChatCallSignal(signal);
+    await trigger(channels.chat(conversationId), "call-signal", signal);
+    if (action === "request" && access.senderType === "CUSTOMER") {
+      await trigger(channels.staffChat, "incoming-call", signal);
+    }
+
+    return { success: true, conversationId };
+  } catch (error) {
+    console.error("[sendChatCallSignal]", getErrorMessage(error));
+    return {
+      success: false,
+      error: "Call-Signal konnte nicht gesendet werden.",
+    };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Staff actions
 // ---------------------------------------------------------------------------
@@ -243,7 +355,8 @@ export async function staffReply(rawInput: unknown): Promise<ChatActionResult> {
     const parsed = staffReplySchema.safeParse(rawInput);
     if (!parsed.success)
       return { success: false, error: "Ungültige Nachricht." };
-    const { conversationId, body } = parsed.data;
+    const { conversationId, imageUrl } = parsed.data;
+    const body = parsed.data.body?.trim() || null;
 
     const conversation = await db.chatConversation.findUnique({
       where: { id: conversationId },
@@ -256,8 +369,9 @@ export async function staffReply(rawInput: unknown): Promise<ChatActionResult> {
         conversationId,
         senderId: staff.id,
         senderType: "STAFF",
-        type: "TEXT",
+        type: imageUrl ? "IMAGE" : "TEXT",
         body,
+        imageUrl: imageUrl ?? null,
       },
     });
     await db.chatConversation.update({
@@ -273,18 +387,24 @@ export async function staffReply(rawInput: unknown): Promise<ChatActionResult> {
 
     // In-app notification to a logged-in customer.
     if (conversation.customerId) {
+      const notificationBody =
+        body ??
+        (imageUrl ? "Das Team hat ein Bild gesendet." : "Neue Chat-Nachricht.");
       await db.notification.create({
         data: {
           userId: conversation.customerId,
           type: "CHAT",
           title: "Neue Nachricht vom Team",
-          body: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+          body:
+            notificationBody.length > 80
+              ? `${notificationBody.slice(0, 80)}…`
+              : notificationBody,
           href: "/account/notifications?chat=1",
         },
       });
       void trigger(channels.user(conversation.customerId), "notification", {
         title: "Neue Nachricht vom Team",
-        body,
+        body: notificationBody,
         href: "/account/notifications?chat=1",
       });
     }
@@ -315,7 +435,7 @@ export async function resolveConversation(
       entity: "ChatConversation",
       entityId: parsed.data,
     });
-    revalidatePath("/admin/chat");
+    revalidatePath("/admin/messages");
     return {
       success: true,
       conversationId: parsed.data,
@@ -338,7 +458,7 @@ export async function saveChatNote(
       where: { id: parsed.data.conversationId },
       data: { internalNotes: parsed.data.note || null },
     });
-    revalidatePath("/admin/chat");
+    revalidatePath("/admin/messages");
     return {
       success: true,
       conversationId: parsed.data.conversationId,
@@ -398,7 +518,7 @@ export async function blockChatUser(
       status: nextStatus,
     });
     void trigger(channels.staffChat, "activity", { id: parsed.data });
-    revalidatePath("/admin/chat");
+    revalidatePath("/admin/messages");
     return {
       success: true,
       conversationId: parsed.data,

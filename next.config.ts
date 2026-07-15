@@ -47,7 +47,8 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(self), payment=(self)",
+    value:
+      "camera=(self), microphone=(self), geolocation=(self), payment=(self)",
   },
   ...(isProduction
     ? [
@@ -63,6 +64,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  allowedDevOrigins: [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "10.19.163.84",
+    "*.local",
+  ],
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24,

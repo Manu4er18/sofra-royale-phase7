@@ -36,7 +36,7 @@ export default async function FaqPage() {
       <ProsePage
         title="Häufige Fragen"
         eyebrow="FAQ"
-        intro="Das Wichtigste auf einen Blick. Ihre Frage ist nicht dabei? Nutzen Sie den Live-Chat oder schreiben Sie uns."
+        intro="Das Wichtigste auf einen Blick. Ihre Frage ist nicht dabei? Nutzen Sie den Messages oder schreiben Sie uns."
       >
         {faqs.length === 0 ? (
           <p>Derzeit sind keine FAQ hinterlegt.</p>

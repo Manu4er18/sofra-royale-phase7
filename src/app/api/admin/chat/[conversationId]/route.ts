@@ -40,6 +40,15 @@ export async function GET(
     return NextResponse.json({ conversation: null }, { status: 404 });
   }
 
+  await db.chatMessage.updateMany({
+    where: {
+      conversationId,
+      senderType: "CUSTOMER",
+      readAt: null,
+    },
+    data: { readAt: new Date() },
+  });
+
   return NextResponse.json(
     {
       conversation: {

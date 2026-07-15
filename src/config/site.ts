@@ -12,7 +12,7 @@ export const siteConfig = {
     "Sofra Royale vereint Dubai Fine Dining mit türkischer Küche: halal Premium-Gerichte, Grill-Spezialitäten, Mezze, Desserts, Lieferung, Abholung und Reservierung.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   defaultLocale: "de" as const,
-  locales: ["de", "en", "tr", "ar"] as const,
+  locales: ["de", "ru", "en", "tg"] as const,
   currency: "EUR",
   links: {
     instagram: "https://instagram.com/sofraroyale",

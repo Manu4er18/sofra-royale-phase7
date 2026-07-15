@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getCartItemCount } from "@/lib/services/cart";
+import { getCustomerUnreadChatCount } from "@/lib/services/chat";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
@@ -16,15 +17,22 @@ export default async function SiteLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const [cartCount, session] = await Promise.all([getCartItemCount(), auth()]);
 
-  const notificationCount = session?.user?.id
-    ? await db.notification.count({
-        where: { userId: session.user.id, readAt: null },
-      })
-    : 0;
+  const [notificationCount, chatUnreadCount] = session?.user?.id
+    ? await Promise.all([
+        db.notification.count({
+          where: { userId: session.user.id, readAt: null },
+        }),
+        getCustomerUnreadChatCount(),
+      ])
+    : [0, 0];
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader cartCount={cartCount} notificationCount={notificationCount} />
+      <SiteHeader
+        cartCount={cartCount}
+        notificationCount={notificationCount}
+        chatUnreadCount={chatUnreadCount}
+      />
       <main id="main-content" className="flex-1">
         {children}
       </main>

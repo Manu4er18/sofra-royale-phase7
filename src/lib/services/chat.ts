@@ -21,6 +21,13 @@ export type ChatMessageView = {
   readAt: string | null;
 };
 
+export type LiveChatMessageView = ChatMessageView;
+
+export type PersistentMessageSummary = {
+  conversationId: string;
+  unreadIncomingCount: number;
+};
+
 const messageSelect = {
   id: true,
   senderType: true,
@@ -78,6 +85,49 @@ export function toMessageViews(
     createdAt: m.createdAt.toISOString(),
     readAt: m.readAt?.toISOString() ?? null,
   }));
+}
+
+export async function getCustomerUnreadChatCount() {
+  const conversation = await getMyConversation();
+  if (!conversation) return 0;
+  return conversation.messages.filter(
+    (message) => message.senderType === "STAFF" && !message.readAt,
+  ).length;
+}
+
+export async function getStaffUnreadChatSummaries(): Promise<{
+  totalUnread: number;
+  conversations: PersistentMessageSummary[];
+}> {
+  const conversations = await db.chatConversation.findMany({
+    where: { status: { not: "ARCHIVED" } },
+    select: {
+      id: true,
+      _count: {
+        select: {
+          messages: {
+            where: {
+              senderType: "CUSTOMER",
+              readAt: null,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const summaries = conversations.map((conversation) => ({
+    conversationId: conversation.id,
+    unreadIncomingCount: conversation._count.messages,
+  }));
+
+  return {
+    totalUnread: summaries.reduce(
+      (total, summary) => total + summary.unreadIncomingCount,
+      0,
+    ),
+    conversations: summaries,
+  };
 }
 
 /** Staff inbox counts + list helpers. */

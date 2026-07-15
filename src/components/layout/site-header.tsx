@@ -3,12 +3,23 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu, Search, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import {
+  Bell,
+  Menu,
+  MessageCircle,
+  Search,
+  ShoppingBag,
+  UtensilsCrossed,
+} from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 import { mainNav } from "@/config/nav";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  LanguageSelect,
+  useLanguage,
+} from "@/components/i18n/language-provider";
 import {
   Sheet,
   SheetContent,
@@ -28,12 +39,15 @@ import { SearchBox } from "@/components/search/search-box";
 export function SiteHeader({
   cartCount = 0,
   notificationCount = 0,
+  chatUnreadCount = 0,
 }: {
   cartCount?: number;
   notificationCount?: number;
+  chatUnreadCount?: number;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const { t } = useLanguage();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -76,7 +90,7 @@ export function SiteHeader({
                   : "text-muted-foreground",
               )}
             >
-              {item.title}
+              {item.labelKey ? t(item.labelKey) : item.title}
             </Link>
           ))}
         </nav>
@@ -93,7 +107,7 @@ export function SiteHeader({
             size="icon"
             className="md:hidden"
             asChild
-            aria-label="Suche öffnen"
+            aria-label={t("site.nav.search")}
           >
             <Link href="/search">
               <Search className="h-5 w-5" />
@@ -107,7 +121,7 @@ export function SiteHeader({
               size="icon"
               className="relative"
               asChild
-              aria-label={`Benachrichtigungen, ${notificationCount} ungelesen`}
+              aria-label={`${t("site.nav.notifications")}, ${notificationCount} ${t("common.unread")}`}
             >
               <Link href="/account/notifications">
                 <Bell className="h-5 w-5" />
@@ -118,13 +132,28 @@ export function SiteHeader({
             </Button>
           ) : null}
 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label={`${t("site.nav.messages")}, ${chatUnreadCount} ${t("common.unread")}`}
+            onClick={() => window.dispatchEvent(new Event("sofra:open-chat"))}
+          >
+            <MessageCircle className="h-5 w-5" />
+            {chatUnreadCount > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[0.7rem] font-bold text-destructive-foreground">
+                {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+              </span>
+            ) : null}
+          </Button>
+
           {/* Cart */}
           <Button
             variant="ghost"
             size="icon"
             className="relative"
             asChild
-            aria-label={`Warenkorb, ${cartCount} Artikel`}
+            aria-label={`${t("site.nav.cart")}, ${cartCount}`}
           >
             <Link href="/cart">
               <ShoppingBag className="h-5 w-5" />
@@ -136,6 +165,7 @@ export function SiteHeader({
             </Link>
           </Button>
 
+          <LanguageSelect compact />
           <ThemeToggle />
           <UserNav />
 
@@ -146,7 +176,7 @@ export function SiteHeader({
                 variant="ghost"
                 size="icon"
                 className="lg:hidden"
-                aria-label="Menü öffnen"
+                aria-label={t("site.nav.openMenu")}
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -173,7 +203,7 @@ export function SiteHeader({
                         : "text-muted-foreground",
                     )}
                   >
-                    {item.title}
+                    {item.labelKey ? t(item.labelKey) : item.title}
                   </Link>
                 ))}
                 <Link
@@ -181,7 +211,8 @@ export function SiteHeader({
                   onClick={() => setMobileOpen(false)}
                   className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:bg-accent"
                 >
-                  Warenkorb{cartCount > 0 ? ` (${cartCount})` : ""}
+                  {t("site.nav.cart")}
+                  {cartCount > 0 ? ` (${cartCount})` : ""}
                 </Link>
               </nav>
             </SheetContent>

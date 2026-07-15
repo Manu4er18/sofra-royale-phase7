@@ -5,10 +5,16 @@ import { usePathname } from "next/navigation";
 
 import { adminNavGroups } from "@/config/nav";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/i18n/language-provider";
 
 /** Admin sidebar (desktop) / horizontal scroll nav (mobile). */
-export function AdminSidebar() {
+export function AdminSidebar({
+  messageUnread = 0,
+}: {
+  messageUnread?: number;
+}) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
@@ -18,7 +24,7 @@ export function AdminSidebar() {
       {adminNavGroups.map((group) => (
         <div key={group.title}>
           <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {group.title}
+            {t(group.labelKey)}
           </p>
           <ul className="flex gap-1 overflow-x-auto lg:flex-col">
             {group.items.map((item) => (
@@ -33,7 +39,14 @@ export function AdminSidebar() {
                   )}
                   aria-current={isActive(item.href) ? "page" : undefined}
                 >
-                  {item.title}
+                  <span className="inline-flex items-center gap-2">
+                    <span>{item.labelKey ? t(item.labelKey) : item.title}</span>
+                    {item.href === "/admin/messages" && messageUnread > 0 ? (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
+                        {messageUnread > 99 ? "99+" : messageUnread}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             ))}

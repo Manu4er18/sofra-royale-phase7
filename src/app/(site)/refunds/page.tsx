@@ -18,24 +18,24 @@ export default function RefundsPage() {
 
       <h2>Ausschluss des Widerrufsrechts</h2>
       <p>
-        Bei frisch zubereiteten Speisen und schnell verderblichen Waren ist
-        das gesetzliche Widerrufsrecht gemäß § 312g Abs. 2 BGB ausgeschlossen,
+        Bei frisch zubereiteten Speisen und schnell verderblichen Waren ist das
+        gesetzliche Widerrufsrecht gemäß § 312g Abs. 2 BGB ausgeschlossen,
         sobald mit der Zubereitung begonnen wurde.
       </p>
 
       <h2>Stornierung vor Zubereitung</h2>
       <p>
         Solange die Küche noch nicht mit der Zubereitung begonnen hat, können
-        Sie Ihre Bestellung stornieren. Kontaktieren Sie uns dazu umgehend
-        über den Live-Chat oder telefonisch. Bereits geleistete Zahlungen
-        werden in diesem Fall vollständig erstattet.
+        Sie Ihre Bestellung stornieren. Kontaktieren Sie uns dazu umgehend über
+        den Messages oder telefonisch. Bereits geleistete Zahlungen werden in
+        diesem Fall vollständig erstattet.
       </p>
 
       <h2>Reklamationen</h2>
       <p>
-        Sollte mit Ihrer Bestellung etwas nicht in Ordnung sein, melden Sie
-        sich bitte zeitnah bei uns. Wir prüfen jeden Fall individuell und
-        veranlassen — wo berechtigt — eine ganze oder teilweise Erstattung.
+        Sollte mit Ihrer Bestellung etwas nicht in Ordnung sein, melden Sie sich
+        bitte zeitnah bei uns. Wir prüfen jeden Fall individuell und veranlassen
+        — wo berechtigt — eine ganze oder teilweise Erstattung.
       </p>
 
       <h2>Ablauf von Erstattungen</h2>

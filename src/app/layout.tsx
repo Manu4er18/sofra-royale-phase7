@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 
 import { siteConfig } from "@/config/site";
+import { LANGUAGE_COOKIE_KEY, isAppLocale } from "@/lib/i18n";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -37,9 +39,9 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: {
       de: "/",
+      ru: "/",
       en: "/",
-      tr: "/",
-      ar: "/",
+      tg: "/",
     },
   },
   openGraph: {
@@ -90,12 +92,15 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieLocale = (await cookies()).get(LANGUAGE_COOKIE_KEY)?.value;
+  const locale = isAppLocale(cookieLocale) ? cookieLocale : "de";
+
   return (
     // suppressHydrationWarning: next-themes mutates <html> class pre-paint.
-    <html lang="de" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className="min-h-screen font-sans"
         style={{
