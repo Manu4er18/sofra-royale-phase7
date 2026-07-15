@@ -12,6 +12,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import {
   clearCallIndicator,
   publishCallIndicator,
+  useCallIndicator,
 } from "@/components/chat/call-indicator";
 
 type ChatRole = "CUSTOMER" | "STAFF";
@@ -79,6 +80,7 @@ export function VideoCallPanel({
   variant?: "button" | "header";
 }) {
   const { t } = useLanguage();
+  const callIndicator = useCallIndicator();
   const callCopy = React.useMemo(
     () => ({
       incomingTitle: t("call.incomingTitle"),
@@ -129,6 +131,28 @@ export function VideoCallPanel({
   React.useEffect(() => {
     if (!incoming) setSignalConversationId(conversationId);
   }, [conversationId, incoming]);
+
+  React.useEffect(() => {
+    if (
+      role !== "STAFF" ||
+      !conversationId ||
+      !callIndicator?.active ||
+      callIndicator.conversationId !== conversationId ||
+      incoming ||
+      isCalling
+    ) {
+      return;
+    }
+    setIncoming({
+      conversationId: callIndicator.conversationId,
+      callId: callIndicator.callId,
+      action: "request",
+      senderType: "CUSTOMER",
+      senderName: callIndicator.callerName ?? undefined,
+    });
+    setCallId(callIndicator.callId);
+    setSignalConversationId(callIndicator.conversationId);
+  }, [callIndicator, conversationId, incoming, isCalling, role]);
 
   const playIncomingTone = React.useCallback(() => {
     try {

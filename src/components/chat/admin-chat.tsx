@@ -16,6 +16,7 @@ import {
   Send,
   Square,
   Trash2,
+  Video,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +48,10 @@ import {
 } from "@/components/i18n/language-provider";
 import { AudioMessagePlayer } from "@/components/chat/audio-message-player";
 import { VideoCallPanel } from "@/components/chat/video-call-panel";
+import {
+  useCallIndicator,
+  VideoCallBadge,
+} from "@/components/chat/call-indicator";
 import { translateSystemMessage } from "@/components/chat/chat-system-copy";
 
 type Message = {
@@ -391,6 +396,7 @@ export function AdminChat({
 }) {
   const router = useRouter();
   const { locale, t } = useLanguage();
+  const call = useCallIndicator();
   const [activeId, setActiveId] = React.useState(initialActive);
   const [messageInbox, setMessageInbox] = React.useState(conversations);
   const [totalUnread, setTotalUnread] = React.useState(initialUnreadTotal);
@@ -829,7 +835,9 @@ export function AdminChat({
             </span>
             <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border">
               <MessageCircle className="h-4 w-4" />
-              {totalUnread > 0 ? (
+              {call?.active ? (
+                <VideoCallBadge className="h-5 min-w-5" />
+              ) : totalUnread > 0 ? (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
                   {totalUnread > 99 ? "99+" : totalUnread}
                 </span>
@@ -850,15 +858,32 @@ export function AdminChat({
                   "w-full rounded-md p-3 text-left text-sm transition-colors",
                   activeId === c.id ? "bg-gold/15" : "hover:bg-accent",
                 )}
-              >
+                >
                 <span className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8 shrink-0">
+                  <span
+                    className={cn(
+                      "relative shrink-0 rounded-full",
+                      call?.active &&
+                        call.conversationId === c.id &&
+                        "ring-2 ring-green-500 ring-offset-2 ring-offset-card",
+                    )}
+                  >
+                    {call?.active && call.conversationId === c.id ? (
+                      <span className="absolute inset-0 animate-ping rounded-full bg-green-500/30" />
+                    ) : null}
+                    <Avatar className="relative h-8 w-8">
                     <AvatarImage src={c.avatarUrl ?? undefined} alt="" />
                     <AvatarFallback>{initials(c.who)}</AvatarFallback>
                   </Avatar>
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{c.who}</span>
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-medium">{c.who}</span>
+                        {call?.active && call.conversationId === c.id ? (
+                          <Video className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                        ) : null}
+                      </span>
                       <Badge
                         variant={c.status === "OPEN" ? "gold" : "secondary"}
                         className="shrink-0"
