@@ -23,6 +23,7 @@ import {
   useLanguage,
 } from "@/components/i18n/language-provider";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AudioMessagePlayer } from "@/components/chat/audio-message-player";
 import { VideoCallPanel } from "@/components/chat/video-call-panel";
 
@@ -32,6 +33,8 @@ type Message = {
   type?: "TEXT" | "IMAGE";
   body: string | null;
   imageUrl: string | null;
+  senderName?: string | null;
+  senderImage?: string | null;
   createdAt: string;
   readAt?: string | null;
 };
@@ -181,6 +184,22 @@ function audioExtension(type: string) {
   if (mimeType === "audio/ogg") return "ogg";
   if (mimeType.includes("wav")) return "wav";
   return "webm";
+}
+
+function initials(name: string | null | undefined) {
+  const value = name?.trim() || "SR";
+  return value
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function formatMessageTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function getMediaErrorMessage(error: unknown, fallback: string) {
@@ -433,6 +452,8 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
         type: image ? "IMAGE" : "TEXT",
         body,
         imageUrl: image,
+        senderName: guestName || "You",
+        senderImage: null,
         createdAt: new Date().toISOString(),
       },
     ]);
@@ -686,36 +707,68 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
                 {copy.empty}
               </p>
             ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex",
-                    message.senderType === "CUSTOMER"
-                      ? "justify-end"
-                      : "justify-start",
-                  )}
-                >
-                  <span
+              messages.map((message) => {
+                const mine = message.senderType === "CUSTOMER";
+                const isSystem = message.senderType === "SYSTEM";
+                return (
+                  <div
+                    key={message.id}
                     className={cn(
-                      "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                      message.senderType === "CUSTOMER"
-                        ? "bg-gold text-gold-foreground"
-                        : message.senderType === "SYSTEM"
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-secondary text-secondary-foreground",
+                      "flex items-end gap-2",
+                      mine ? "justify-end" : "justify-start",
                     )}
                   >
-                    {message.imageUrl ? (
-                      <ChatAttachmentPreview
-                        url={message.imageUrl}
-                        mine={message.senderType === "CUSTOMER"}
-                      />
+                    {!mine && !isSystem ? (
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage
+                          src={message.senderImage ?? undefined}
+                          alt=""
+                        />
+                        <AvatarFallback>
+                          {initials(message.senderName ?? "Team")}
+                        </AvatarFallback>
+                      </Avatar>
                     ) : null}
-                    {message.body ? <span>{message.body}</span> : null}
-                  </span>
-                </div>
-              ))
+                    <span
+                      className={cn(
+                        "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                        mine
+                          ? "bg-gold text-gold-foreground"
+                          : isSystem
+                            ? "mx-auto bg-muted text-muted-foreground"
+                            : "bg-secondary text-secondary-foreground",
+                      )}
+                    >
+                      {!isSystem && message.senderName ? (
+                        <span className="mb-0.5 block text-[10px] font-semibold opacity-70">
+                          {message.senderName}
+                        </span>
+                      ) : null}
+                      {message.imageUrl ? (
+                        <ChatAttachmentPreview
+                          url={message.imageUrl}
+                          mine={mine}
+                        />
+                      ) : null}
+                      {message.body ? <span>{message.body}</span> : null}
+                      <span className="mt-0.5 block text-right text-[10px] tabular-nums opacity-70">
+                        {formatMessageTime(message.createdAt)}
+                      </span>
+                    </span>
+                    {mine ? (
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage
+                          src={message.senderImage ?? undefined}
+                          alt=""
+                        />
+                        <AvatarFallback>
+                          {initials(message.senderName ?? guestName ?? "You")}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : null}
+                  </div>
+                );
+              })
             )}
             {staffTyping ? (
               <p className="text-xs italic text-muted-foreground">

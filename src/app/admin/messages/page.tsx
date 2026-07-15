@@ -53,7 +53,9 @@ export default async function AdminMessagesPage(props: {
       orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
       take: 50,
       include: {
-        customer: { select: { name: true, email: true, isChatBlocked: true } },
+        customer: {
+          select: { name: true, email: true, image: true, isChatBlocked: true },
+        },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -77,6 +79,7 @@ export default async function AdminMessagesPage(props: {
     contact: c.customer?.email ?? c.guestEmail ?? "",
     status: c.status,
     isBlocked: c.customer?.isChatBlocked ?? false,
+    avatarUrl: c.customer?.image ?? null,
     lastMessage:
       c.messages[0]?.body ??
       (c.messages[0]?.imageUrl ? "(Anhang)" : "(kein Text)"),
@@ -101,6 +104,7 @@ export default async function AdminMessagesPage(props: {
             type: true,
             body: true,
             imageUrl: true,
+            sender: { select: { name: true, email: true, image: true } },
             createdAt: true,
             readAt: true,
           },
@@ -132,6 +136,8 @@ export default async function AdminMessagesPage(props: {
           senderType: m.senderType,
           body: m.body,
           imageUrl: m.imageUrl,
+          senderName: m.senderName,
+          senderImage: m.senderImage,
           createdAt: m.createdAt,
         }))}
         initialNote={initialNote}

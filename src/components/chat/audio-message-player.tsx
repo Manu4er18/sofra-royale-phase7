@@ -12,6 +12,28 @@ function formatTime(value: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+function audioMimeFromUrl(url: string) {
+  const clean = url.split("?")[0]?.toLowerCase() ?? url.toLowerCase();
+  if (clean.endsWith(".mp3")) return "audio/mpeg";
+  if (clean.endsWith(".m4a") || clean.endsWith(".mp4")) return "audio/mp4";
+  if (clean.endsWith(".ogg") || clean.endsWith(".oga")) return "audio/ogg";
+  if (clean.endsWith(".wav")) return "audio/wav";
+  if (clean.endsWith(".aac")) return "audio/aac";
+  if (clean.endsWith(".webm")) return "audio/webm";
+  return undefined;
+}
+
+function cloudinaryAudioFallback(url: string) {
+  if (!url.includes("res.cloudinary.com") || !url.includes("/chat/audio/")) {
+    return null;
+  }
+  const [path, query] = url.split("?");
+  if (!path || !/\.(webm|m4a|mp4|aac|ogg|wav)$/i.test(path)) return null;
+  return `${path.replace(/\.(webm|m4a|mp4|aac|ogg|wav)$/i, ".mp3")}${
+    query ? `?${query}` : ""
+  }`;
+}
+
 export function AudioMessagePlayer({
   src,
   mine = false,
@@ -23,35 +45,87 @@ export function AudioMessagePlayer({
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
+  const [loadError, setLoadError] = React.useState(false);
+  const sources = React.useMemo(() => {
+    const fallback = cloudinaryAudioFallback(src);
+    return [
+      { src, type: audioMimeFromUrl(src) },
+      ...(fallback ? [{ src: fallback, type: "audio/mpeg" }] : []),
+    ];
+  }, [src]);
 
   React.useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onTime = () => setCurrentTime(audio.currentTime);
-    const onMeta = () => setDuration(audio.duration || 0);
+    const syncDuration = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+        return;
+      }
+      if (audio.seekable.length > 0) {
+        const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
+        if (Number.isFinite(seekableEnd) && seekableEnd > 0) {
+          setDuration(seekableEnd);
+        }
+      }
+    };
+    const onTime = () => {
+      if (audio.currentTime > 1_000_000 && audio.duration === Infinity) {
+        audio.currentTime = 0;
+        return;
+      }
+      setCurrentTime(audio.currentTime);
+      syncDuration();
+    };
+    const onMeta = () => {
+      setLoadError(false);
+      syncDuration();
+      if (audio.duration === Infinity) {
+        audio.currentTime = Number.MAX_SAFE_INTEGER;
+      }
+    };
     const onEnded = () => setIsPlaying(false);
+    const onError = () => {
+      setIsPlaying(false);
+      setLoadError(true);
+    };
 
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("loadeddata", onMeta);
+    audio.addEventListener("canplay", onMeta);
     audio.addEventListener("durationchange", onMeta);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("pause", onEnded);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("loadeddata", onMeta);
+      audio.removeEventListener("canplay", onMeta);
       audio.removeEventListener("durationchange", onMeta);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("pause", onEnded);
+      audio.removeEventListener("error", onError);
     };
   }, []);
 
+  React.useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    setLoadError(false);
+    setIsPlaying(false);
+    audioRef.current?.load();
+  }, [src]);
+
   async function togglePlayback() {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || loadError) return;
     try {
       if (audio.paused) {
+        if (audio.readyState === 0) audio.load();
         await audio.play();
         setIsPlaying(true);
       } else {
@@ -79,7 +153,11 @@ export function AudioMessagePlayer({
         mine ? "bg-gold/25" : "bg-background/80",
       )}
     >
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} preload="metadata" crossOrigin="anonymous">
+        {sources.map((source) => (
+          <source key={source.src} src={source.src} type={source.type} />
+        ))}
+      </audio>
       <span
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
@@ -94,10 +172,12 @@ export function AudioMessagePlayer({
         onClick={togglePlayback}
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95",
+          loadError && "cursor-not-allowed opacity-60",
           mine
             ? "bg-gold text-gold-foreground"
             : "bg-primary text-primary-foreground",
         )}
+        disabled={loadError}
         aria-label={isPlaying ? "Pause audio" : "Play audio"}
       >
         {isPlaying ? (
@@ -129,13 +209,17 @@ export function AudioMessagePlayer({
             step={0.1}
             value={progress}
             onChange={(event) => seek(Number(event.target.value))}
-            className="relative z-10 h-7 w-full cursor-pointer opacity-0"
+            className={cn(
+              "relative z-10 h-7 w-full opacity-0",
+              duration ? "cursor-pointer" : "cursor-default",
+            )}
             aria-label="Audio progress"
+            disabled={!duration}
           />
         </div>
         <div className="-mt-0.5 flex items-center justify-between text-[10px] tabular-nums opacity-75">
           <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
+          <span>{loadError ? "--:--" : formatTime(duration)}</span>
         </div>
       </div>
     </div>

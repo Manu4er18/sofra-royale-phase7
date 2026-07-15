@@ -17,6 +17,8 @@ export type ChatMessageView = {
   type: "TEXT" | "IMAGE";
   body: string | null;
   imageUrl: string | null;
+  senderName: string | null;
+  senderImage: string | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -34,6 +36,7 @@ const messageSelect = {
   type: true,
   body: true,
   imageUrl: true,
+  sender: { select: { name: true, email: true, image: true } },
   createdAt: true,
   readAt: true,
 } as const;
@@ -72,6 +75,11 @@ export function toMessageViews(
     type: "TEXT" | "IMAGE";
     body: string | null;
     imageUrl: string | null;
+    sender?: {
+      name: string | null;
+      email: string | null;
+      image: string | null;
+    } | null;
     createdAt: Date;
     readAt: Date | null;
   }>,
@@ -82,6 +90,8 @@ export function toMessageViews(
     type: m.type,
     body: m.body,
     imageUrl: m.imageUrl,
+    senderName: m.sender?.name ?? m.sender?.email ?? null,
+    senderImage: m.sender?.image ?? null,
     createdAt: m.createdAt.toISOString(),
     readAt: m.readAt?.toISOString() ?? null,
   }));

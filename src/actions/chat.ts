@@ -56,6 +56,11 @@ async function pushMessage(
     type: string;
     body: string | null;
     imageUrl: string | null;
+    sender?: {
+      name: string | null;
+      email: string | null;
+      image: string | null;
+    } | null;
     createdAt: Date;
   },
 ) {
@@ -65,9 +70,43 @@ async function pushMessage(
     type: message.type,
     body: message.body,
     imageUrl: message.imageUrl,
+    senderName: message.sender?.name ?? message.sender?.email ?? null,
+    senderImage: message.sender?.image ?? null,
     createdAt: message.createdAt.toISOString(),
   };
   await trigger(channels.chat(conversationId), "message", payload);
+}
+
+async function createCallTimelineMessage(
+  conversationId: string,
+  senderType: "CUSTOMER" | "STAFF",
+  senderId: string | null,
+  action: "request" | "accept" | "decline" | "end",
+) {
+  const labelByAction: Record<typeof action, string> = {
+    request:
+      senderType === "CUSTOMER"
+        ? "Video call requested by customer."
+        : "Video call started by team.",
+    accept: "Video call accepted.",
+    decline: "Video call declined.",
+    end: "Video call ended.",
+  };
+
+  const message = await db.chatMessage.create({
+    data: {
+      conversationId,
+      senderId,
+      senderType: "SYSTEM",
+      type: "TEXT",
+      body: labelByAction[action],
+      imageUrl: null,
+    },
+    include: {
+      sender: { select: { name: true, email: true, image: true } },
+    },
+  });
+  await pushMessage(conversationId, message);
 }
 
 /** Start a conversation (customer or guest) with a first message. */
@@ -135,7 +174,13 @@ export async function startChat(rawInput: unknown): Promise<ChatActionResult> {
           },
         },
       },
-      include: { messages: true },
+      include: {
+        messages: {
+          include: {
+            sender: { select: { name: true, email: true, image: true } },
+          },
+        },
+      },
     });
 
     // Guests: remember the conversation via cookie.
@@ -229,6 +274,9 @@ export async function sendMessage(
         body,
         imageUrl: imageUrl ?? null,
       },
+      include: {
+        sender: { select: { name: true, email: true, image: true } },
+      },
     });
     await db.chatConversation.update({
       where: { id: conversationId },
@@ -278,6 +326,7 @@ async function canSignalConversation(conversationId: string) {
       conversation,
       senderType: "STAFF" as const,
       senderName: session?.user.name ?? session?.user.email ?? "Team",
+      senderId: session?.user.id ?? null,
     };
   }
 
@@ -298,6 +347,7 @@ async function canSignalConversation(conversationId: string) {
       conversation.customer?.email ??
       conversation.guestEmail ??
       "Gast",
+    senderId: session?.user?.id ?? null,
   };
 }
 
@@ -331,6 +381,14 @@ export async function sendChatCallSignal(
 
     storeChatCallSignal(signal);
     await trigger(channels.chat(conversationId), "call-signal", signal);
+    if (["request", "accept", "decline", "end"].includes(action)) {
+      await createCallTimelineMessage(
+        conversationId,
+        access.senderType,
+        access.senderId,
+        action as "request" | "accept" | "decline" | "end",
+      );
+    }
     if (action === "request" && access.senderType === "CUSTOMER") {
       await trigger(channels.staffChat, "incoming-call", signal);
     }
@@ -372,6 +430,9 @@ export async function staffReply(rawInput: unknown): Promise<ChatActionResult> {
         type: imageUrl ? "IMAGE" : "TEXT",
         body,
         imageUrl: imageUrl ?? null,
+      },
+      include: {
+        sender: { select: { name: true, email: true, image: true } },
       },
     });
     await db.chatConversation.update({

@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   LanguageSelect,
   useLanguage,
@@ -43,6 +44,8 @@ type Message = {
   type?: "TEXT" | "IMAGE";
   body: string | null;
   imageUrl: string | null;
+  senderName?: string | null;
+  senderImage?: string | null;
   createdAt: string;
 };
 
@@ -54,6 +57,7 @@ export type ConversationListItem = {
   contact: string;
   status: string;
   isBlocked: boolean;
+  avatarUrl?: string | null;
   lastMessage: string;
   updatedAt: string;
   unreadCount: number;
@@ -260,6 +264,15 @@ function audioExtension(type: string) {
   return "webm";
 }
 
+function initials(name: string | null | undefined) {
+  const value = name?.trim() || "SR";
+  return value
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 function getMediaErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof DOMException)) return fallback;
   if (error.name === "NotAllowedError" || error.name === "SecurityError") {
@@ -425,6 +438,13 @@ export function AdminChat({
     return copy.hoursAgo.replace("{n}", String(hours));
   }
 
+  function formatMessageTime(value: string) {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  }
+
   React.useEffect(() => {
     setMessageInbox(conversations);
     setTotalUnread(initialUnreadTotal);
@@ -579,6 +599,8 @@ export function AdminChat({
         type: imageUrl ? "IMAGE" : "TEXT",
         body,
         imageUrl,
+        senderName: "Team",
+        senderImage: null,
         createdAt: new Date().toISOString(),
       }),
     );
@@ -776,14 +798,22 @@ export function AdminChat({
                   activeId === c.id ? "bg-gold/15" : "hover:bg-accent",
                 )}
               >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">{c.who}</span>
-                  <Badge
-                    variant={c.status === "OPEN" ? "gold" : "secondary"}
-                    className="shrink-0"
-                  >
-                    {STATUS_LABEL[c.status] ?? c.status}
-                  </Badge>
+                <span className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={c.avatarUrl ?? undefined} alt="" />
+                    <AvatarFallback>{initials(c.who)}</AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">{c.who}</span>
+                      <Badge
+                        variant={c.status === "OPEN" ? "gold" : "secondary"}
+                        className="shrink-0"
+                      >
+                        {STATUS_LABEL[c.status] ?? c.status}
+                      </Badge>
+                    </span>
+                  </span>
                 </span>
                 {c.unreadCount > 0 ? (
                   <span className="mt-1 inline-flex rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
@@ -849,36 +879,68 @@ export function AdminChat({
                 className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3"
                 aria-live="polite"
               >
-                {liveMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex",
-                      message.senderType === "STAFF"
-                        ? "justify-end"
-                        : "justify-start",
-                    )}
-                  >
-                    <span
+                {liveMessages.map((message) => {
+                  const mine = message.senderType === "STAFF";
+                  const isSystem = message.senderType === "SYSTEM";
+                  return (
+                    <div
+                      key={message.id}
                       className={cn(
-                        "max-w-[68%] rounded-xl px-2.5 py-1.5 text-sm",
-                        message.senderType === "STAFF"
-                          ? "bg-gold text-gold-foreground"
-                          : message.senderType === "SYSTEM"
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-secondary text-secondary-foreground",
+                        "flex items-end gap-2",
+                        mine ? "justify-end" : "justify-start",
                       )}
                     >
-                      {message.imageUrl ? (
-                        <ChatAttachmentPreview
-                          url={message.imageUrl}
-                          mine={message.senderType === "STAFF"}
-                        />
+                      {!mine && !isSystem ? (
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarImage
+                            src={message.senderImage ?? undefined}
+                            alt=""
+                          />
+                          <AvatarFallback>
+                            {initials(message.senderName ?? "Gast")}
+                          </AvatarFallback>
+                        </Avatar>
                       ) : null}
-                      {message.body ? <span>{message.body}</span> : null}
-                    </span>
-                  </div>
-                ))}
+                      <span
+                        className={cn(
+                          "max-w-[68%] rounded-xl px-2.5 py-1.5 text-sm",
+                          mine
+                            ? "bg-gold text-gold-foreground"
+                            : isSystem
+                              ? "mx-auto bg-muted text-muted-foreground"
+                              : "bg-secondary text-secondary-foreground",
+                        )}
+                      >
+                        {!isSystem && message.senderName ? (
+                          <span className="mb-0.5 block text-[10px] font-semibold opacity-70">
+                            {message.senderName}
+                          </span>
+                        ) : null}
+                        {message.imageUrl ? (
+                          <ChatAttachmentPreview
+                            url={message.imageUrl}
+                            mine={mine}
+                          />
+                        ) : null}
+                        {message.body ? <span>{message.body}</span> : null}
+                        <span className="mt-0.5 block text-right text-[10px] tabular-nums opacity-70">
+                          {formatMessageTime(message.createdAt)}
+                        </span>
+                      </span>
+                      {mine ? (
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarImage
+                            src={message.senderImage ?? undefined}
+                            alt=""
+                          />
+                          <AvatarFallback>
+                            {initials(message.senderName ?? "SA")}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="shrink-0 border-t p-3">
