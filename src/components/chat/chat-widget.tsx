@@ -446,7 +446,12 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
     void sendTyping(conversationId);
   }
 
-  async function uploadMedia(file: File, kind: AttachmentKind) {
+  async function uploadMedia(
+    file: File,
+    kind: AttachmentKind,
+    options: { attach?: boolean } = {},
+  ) {
+    const shouldAttach = options.attach ?? true;
     const formData = new FormData();
     formData.set("media", file);
     formData.set("kind", kind);
@@ -465,16 +470,53 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
       };
       if (!response.ok || !result.imageUrl) {
         toast.error(result.error ?? "Datei konnte nicht hochgeladen werden.");
-        return;
+        return null;
       }
-      setAttachmentUrl(result.imageUrl);
-      setAttachmentKind(result.kind ?? kind);
+      if (shouldAttach) {
+        setAttachmentUrl(result.imageUrl);
+        setAttachmentKind(result.kind ?? kind);
+      }
+      return { url: result.imageUrl, kind: result.kind ?? kind };
     } finally {
       setIsUploading(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
       if (videoInputRef.current) videoInputRef.current.value = "";
       if (audioInputRef.current) audioInputRef.current.value = "";
     }
+  }
+
+  function sendCustomerMessage(body: string | null, imageUrl: string | null) {
+    if (isBlocked) {
+      toast.error(copy.blocked);
+      return;
+    }
+    if (!isLoggedIn && !conversationId && !guestEmail.trim()) {
+      toast.error(copy.emailRequired);
+      setAttachmentUrl(imageUrl);
+      if (imageUrl) setAttachmentKind(getAttachmentKind(imageUrl));
+      return;
+    }
+    optimisticAppend(body, imageUrl);
+    startTransition(async () => {
+      const result = conversationId
+        ? await sendMessage({
+            conversationId,
+            body: body ?? "",
+            imageUrl: imageUrl ?? undefined,
+          })
+        : await startChat({
+            message: body ?? "",
+            imageUrl: imageUrl ?? undefined,
+            guestName: guestName || undefined,
+            guestEmail: guestEmail || undefined,
+          });
+      if (!result.success) {
+        toast.error(result.error);
+        if (result.error.includes("deaktiviert")) setIsBlocked(true);
+        return;
+      }
+      if (!conversationId) setConversationId(result.conversationId);
+    });
   }
 
   async function toggleVoiceRecording() {
@@ -514,7 +556,12 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
           `voice-${Date.now()}.${audioExtension(audioBlob.type)}`,
           { type: audioBlob.type },
         );
-        void uploadMedia(audioFile, "audio");
+        void uploadMedia(audioFile, "audio", { attach: false }).then(
+          (uploaded) => {
+            if (!uploaded?.url) return;
+            sendCustomerMessage(null, uploaded.url);
+          },
+        );
       };
       recorder.start();
       setIsRecording(true);
@@ -580,27 +627,7 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
     setDraft("");
     const attachedImageUrl = attachmentUrl;
     setAttachmentUrl(null);
-    optimisticAppend(body || null, attachedImageUrl);
-    startTransition(async () => {
-      const result = conversationId
-        ? await sendMessage({
-            conversationId,
-            body,
-            imageUrl: attachedImageUrl ?? undefined,
-          })
-        : await startChat({
-            message: body,
-            imageUrl: attachedImageUrl ?? undefined,
-            guestName: guestName || undefined,
-            guestEmail: guestEmail || undefined,
-          });
-      if (!result.success) {
-        toast.error(result.error);
-        if (result.error.includes("deaktiviert")) setIsBlocked(true);
-        return;
-      }
-      if (!conversationId) setConversationId(result.conversationId);
-    });
+    sendCustomerMessage(body || null, attachedImageUrl);
   }
 
   return (
@@ -610,7 +637,10 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Chat schließen" : "Chat öffnen"}
         aria-expanded={open}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-premium-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-gold dark:text-gold-foreground"
+        className={cn(
+          "fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-premium-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-gold dark:text-gold-foreground",
+          open && "hidden sm:flex",
+        )}
       >
         {open ? (
           <X className="h-6 w-6" />
@@ -625,18 +655,30 @@ export function ChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
       </button>
 
       {open ? (
-        <div className="fixed bottom-24 right-5 z-50 flex h-[30rem] w-[calc(100vw-2.5rem)] max-w-sm flex-col overflow-hidden rounded-xl border bg-background shadow-premium-lg">
+        <div className="fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col overflow-hidden border bg-background shadow-premium-lg sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[30rem] sm:w-[calc(100vw-2.5rem)] sm:max-w-sm sm:rounded-xl">
           <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground dark:bg-card dark:text-foreground">
             <div>
               <p className="font-display font-semibold">{copy.chatTitle}</p>
               <p className="text-xs opacity-80">{copy.subtitle}</p>
             </div>
-            <LanguageSelect compact />
+            <div className="flex items-center gap-2">
+              <LanguageSelect compact />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground dark:text-foreground"
+                onClick={() => setOpen(false)}
+                aria-label="Chat schließen"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div
             ref={scrollRef}
-            className="flex-1 space-y-2 overflow-y-auto p-4"
+            className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4"
             aria-live="polite"
           >
             {messages.length === 0 ? (

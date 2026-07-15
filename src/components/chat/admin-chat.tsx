@@ -530,7 +530,12 @@ export function AdminChat({
     };
   }, [callStream]);
 
-  async function uploadMedia(file: File, kind: AttachmentKind) {
+  async function uploadMedia(
+    file: File,
+    kind: AttachmentKind,
+    options: { attach?: boolean } = {},
+  ) {
+    const shouldAttach = options.attach ?? true;
     const formData = new FormData();
     formData.set("media", file);
     formData.set("kind", kind);
@@ -549,10 +554,13 @@ export function AdminChat({
       };
       if (!response.ok || !result.imageUrl) {
         toast.error(result.error ?? "Datei konnte nicht hochgeladen werden.");
-        return;
+        return null;
       }
-      setAttachmentUrl(result.imageUrl);
-      setAttachmentKind(result.kind ?? kind);
+      if (shouldAttach) {
+        setAttachmentUrl(result.imageUrl);
+        setAttachmentKind(result.kind ?? kind);
+      }
+      return { url: result.imageUrl, kind: result.kind ?? kind };
     } finally {
       setIsUploading(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
@@ -560,6 +568,28 @@ export function AdminChat({
       if (audioInputRef.current) audioInputRef.current.value = "";
       if (documentInputRef.current) documentInputRef.current.value = "";
     }
+  }
+
+  function sendStaffMessage(body: string | null, imageUrl: string | null) {
+    if (!activeId) return;
+    setLiveMessages((prev) =>
+      mergeMessage(prev, {
+        id: `tmp-${Date.now()}`,
+        senderType: "STAFF",
+        type: imageUrl ? "IMAGE" : "TEXT",
+        body,
+        imageUrl,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+    startTransition(async () => {
+      const result = await staffReply({
+        conversationId: activeId,
+        body: body ?? "",
+        imageUrl: imageUrl ?? undefined,
+      });
+      if (!result.success) toast.error(result.error);
+    });
   }
 
   async function toggleVoiceRecording() {
@@ -601,7 +631,12 @@ export function AdminChat({
             type: audioBlob.type,
           },
         );
-        void uploadMedia(audioFile, "audio");
+        void uploadMedia(audioFile, "audio", { attach: false }).then(
+          (uploaded) => {
+            if (!uploaded?.url) return;
+            sendStaffMessage(null, uploaded.url);
+          },
+        );
       };
       recorder.start();
       setIsRecording(true);
@@ -659,25 +694,7 @@ export function AdminChat({
     setDraft("");
     const attachedImageUrl = attachmentUrl;
     setAttachmentUrl(null);
-    setLiveMessages((prev) => [
-      ...prev,
-      {
-        id: `tmp-${Date.now()}`,
-        senderType: "STAFF",
-        type: attachedImageUrl ? "IMAGE" : "TEXT",
-        body: body || null,
-        imageUrl: attachedImageUrl,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    startTransition(async () => {
-      const result = await staffReply({
-        conversationId: activeId,
-        body,
-        imageUrl: attachedImageUrl ?? undefined,
-      });
-      if (!result.success) toast.error(result.error);
-    });
+    sendStaffMessage(body || null, attachedImageUrl);
   }
 
   function resolve() {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pause, Play } from "lucide-react";
+import { Mic, Pause, Play } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -75,16 +75,25 @@ export function AudioMessagePlayer({
   return (
     <div
       className={cn(
-        "flex min-w-52 max-w-72 items-center gap-2 rounded-full px-2 py-1.5",
-        mine ? "bg-gold/20" : "bg-background/70",
+        "flex min-w-56 max-w-80 items-center gap-2 rounded-2xl px-2.5 py-2 shadow-sm",
+        mine ? "bg-gold/25" : "bg-background/80",
       )}
     >
       <audio ref={audioRef} src={src} preload="metadata" />
+      <span
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          mine ? "bg-gold/30 text-gold-foreground" : "bg-muted text-foreground",
+        )}
+        aria-hidden
+      >
+        <Mic className="h-4 w-4" />
+      </span>
       <button
         type="button"
         onClick={togglePlayback}
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95",
           mine
             ? "bg-gold text-gold-foreground"
             : "bg-primary text-primary-foreground",
@@ -98,17 +107,33 @@ export function AudioMessagePlayer({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={0.1}
-          value={progress}
-          onChange={(event) => seek(Number(event.target.value))}
-          className="h-1 w-full cursor-pointer accent-current"
-          aria-label="Audio progress"
-        />
-        <div className="mt-0.5 flex items-center justify-between text-[10px] tabular-nums opacity-75">
+        <div className="relative flex h-7 items-center">
+          <div className="bg-current/20 absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" />
+          <div
+            className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-current"
+            style={{ width: `${progress}%` }}
+          />
+          <div className="pointer-events-none absolute inset-x-0 flex items-center justify-between opacity-40">
+            {Array.from({ length: 18 }).map((_, index) => (
+              <span
+                key={index}
+                className="w-0.5 rounded-full bg-current"
+                style={{ height: `${8 + ((index * 7) % 15)}px` }}
+              />
+            ))}
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={0.1}
+            value={progress}
+            onChange={(event) => seek(Number(event.target.value))}
+            className="relative z-10 h-7 w-full cursor-pointer opacity-0"
+            aria-label="Audio progress"
+          />
+        </div>
+        <div className="-mt-0.5 flex items-center justify-between text-[10px] tabular-nums opacity-75">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
